@@ -1,21 +1,43 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { getClientIp, assertPublicWebsiteUrl } from '@/lib/security'
+import { formatZodError, toolSubmissionSchema } from '@/lib/validation'
 import {
   evaluateToolForInsertion,
   findExistingTool,
   normalizeName,
-  normalizeTool,
   slugify,
 } from '@/lib/tool-ingestion'
 
 export async function POST(request) {
   try {
-    const payload = await request.json()
-    const tool = normalizeTool(payload)
+    const ip = getClientIp(request)
+    const rateLimit = checkRateLimit({
+      key: `submit-tool:${ip}`,
+      limit: 10,
+      windowMs: 60 * 60 * 1000,
+    })
 
-    if (!tool.name || !tool.description || !tool.category || !tool.pricing || !tool.websiteUrl) {
-      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 })
     }
+
+    const parsed = toolSubmissionSchema.safeParse(await request.json())
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
+    }
+
+    const tool = {
+      name: parsed.data.name,
+      description: parsed.data.description,
+      category: parsed.data.category,
+      pricing: parsed.data.pricing || 'freemium',
+      websiteUrl: parsed.data.url,
+    }
+
+    await assertPublicWebsiteUrl(tool.websiteUrl)
 
     const normalizedName = normalizeName(tool.name)
     const slug = slugify(tool.name)
@@ -55,7 +77,14 @@ export async function POST(request) {
       status: evaluation.status,
       autoApproved: evaluation.status === 'approved',
     })
-  } catch {
+  } catch (error) {
+    if (
+      String(error?.message || '').includes('Blocked host') ||
+      String(error?.message || '').includes('allowed')
+    ) {
+      return NextResponse.json({ error: 'This website URL is not allowed.' }, { status: 400 })
+    }
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

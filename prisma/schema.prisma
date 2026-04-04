@@ -30,14 +30,16 @@ model Tool {
 }
 
 model User {
-  id        Int            @id @default(autoincrement())
-  name      String?        @db.VarChar(255)
-  email     String         @unique @db.VarChar(255)
-  password  String         @db.VarChar(255)
-  createdAt DateTime?      @default(now()) @map("created_at") @db.Timestamp(0)
-  reviews   Review[]
-  activity  UserActivity[]
-  likes     UserLike[]
+  id             Int             @id @default(autoincrement())
+  name           String?         @db.VarChar(255)
+  email          String          @unique @db.VarChar(255)
+  password       String          @db.VarChar(255)
+  role           user_role       @default(user)
+  createdAt      DateTime?       @default(now()) @map("created_at") @db.Timestamp(0)
+  reviews        Review[]
+  activity       UserActivity[]
+  likes          UserLike[]
+  adminAuditLogs AdminAuditLog[]
 
   @@map("users")
 }
@@ -85,6 +87,19 @@ model UserLike {
   @@map("user_likes")
 }
 
+model AdminAuditLog {
+  id        Int                @id @default(autoincrement())
+  adminId   Int                @map("admin_id")
+  action    admin_audit_action
+  ipAddress String?            @map("ip_address") @db.VarChar(255)
+  createdAt DateTime?          @default(now()) @map("created_at") @db.Timestamp(0)
+  admin     User               @relation(fields: [adminId], references: [id], onDelete: Cascade, map: "fk_admin_audit_logs_user")
+
+  @@index([adminId], map: "admin_audit_logs_admin_id_idx")
+  @@index([action], map: "admin_audit_logs_action_idx")
+  @@map("admin_audit_logs")
+}
+
 enum tools_pricing {
   free
   freemium
@@ -95,4 +110,16 @@ enum tools_status {
   approved
   pending
   rejected
+}
+
+enum user_role {
+  user
+  admin
+}
+
+enum admin_audit_action {
+  admin_login
+  tool_approval
+  tool_rejection
+  tool_deletion
 }

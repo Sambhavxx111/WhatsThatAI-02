@@ -7,6 +7,16 @@ import { createRequire } from 'node:module'
 import { promisify } from 'node:util'
 import { createWorker } from 'tesseract.js'
 import { db } from '@/lib/db'
+import { getAuthenticatedUser } from '@/lib/auth'
+import { checkRateLimit } from '@/lib/rate-limit'
+import {
+  assertAllowedRemoteVideoUrl,
+  assertRemoteVideoResponse,
+  assertVideoUpload,
+  getClientIp,
+} from '@/lib/security'
+import { validateSafeInstagramUrl } from '@/lib/url-validation'
+import { formatZodError, instagramUrlSchema } from '@/lib/validation'
 
 const require = createRequire(import.meta.url)
 const importedFfmpegPath = require('ffmpeg-static')
@@ -189,30 +199,8 @@ function extractInstagramVideoUrl(payload) {
   return ''
 }
 
-function validateUrl(url) {
-  let parsedUrl
-
-  try {
-    parsedUrl = new URL(url)
-  } catch {
-    throw new Error('Invalid URL')
-  }
-
-  return parsedUrl
-}
-
-function validateInstagramUrl(url) {
-  const parsedUrl = validateUrl(url)
-
-  if (!parsedUrl.hostname.includes('instagram.com')) {
-    throw new Error('Invalid Instagram URL')
-  }
-
-  return parsedUrl
-}
-
 async function getInstagramVideo(url) {
-  validateInstagramUrl(url)
+  await validateSafeInstagramUrl(url)
 
   try {
     if (!process.env.RAPIDAPI_KEY) {
@@ -238,8 +226,6 @@ async function getInstagramVideo(url) {
     }
 
     const data = await response.json()
-    console.log(data)
-
     const videoUrl = extractInstagramVideoUrl(data)
 
     if (videoUrl) {
@@ -268,6 +254,8 @@ async function getInstagramVideo(url) {
 }
 
 async function downloadVideo(videoUrl) {
+  await assertAllowedRemoteVideoUrl(videoUrl)
+
   const response = await fetch(videoUrl, {
     method: 'GET',
     cache: 'no-store',
@@ -276,6 +264,8 @@ async function downloadVideo(videoUrl) {
   if (!response.ok) {
     throw new Error('Could not download video')
   }
+
+  assertRemoteVideoResponse(response)
 
   const bytes = Buffer.from(await response.arrayBuffer())
   const videoPath = path.join(TEMP_DIR, `video-${randomUUID()}.mp4`)
@@ -414,6 +404,8 @@ async function findMatchingTools(detectedText) {
 }
 
 async function saveUploadedVideo(file) {
+  assertVideoUpload(file)
+
   const bytes = Buffer.from(await file.arrayBuffer())
   const extension = path.extname(file.name || '') || '.mp4'
   const filePath = path.join(TEMP_DIR, `upload-${randomUUID()}${extension}`)
@@ -439,6 +431,23 @@ export async function POST(request) {
   let filePath = ''
 
   try {
+    const user = await getAuthenticatedUser(request)
+
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const ip = getClientIp(request)
+    const rateLimit = checkRateLimit({
+      key: `identify-video:${user.id}:${ip}`,
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+    })
+
+    if (!rateLimit.allowed) {
+      return Response.json({ error: 'Too many analysis requests. Please try again later.' }, { status: 429 })
+    }
+
     const contentType = request.headers.get('content-type') || ''
 
     if (contentType.includes('multipart/form-data')) {
@@ -454,30 +463,21 @@ export async function POST(request) {
 
       filePath = await saveUploadedVideo(uploadedFile)
     } else {
-      const body = await request.json()
-      const url = String(body?.url || '').trim()
+      const parsed = instagramUrlSchema.safeParse(await request.json())
 
-      if (!url) {
-        return Response.json({ error: 'Invalid URL' }, { status: 400 })
+      if (!parsed.success) {
+        return Response.json({ error: formatZodError(parsed.error) }, { status: 400 })
       }
 
-      let resolvedVideoUrl = url
+      let resolvedVideoUrl = parsed.data.url
 
-      if (url.includes('instagram.com')) {
-        try {
-          resolvedVideoUrl = await getInstagramVideo(url)
-        } catch {
-          return Response.json(
-            { error: 'Could not fetch Instagram video. Try uploading instead.' },
-            { status: 400 }
-          )
-        }
-      } else {
-        try {
-          validateUrl(url)
-        } catch {
-          return Response.json({ error: 'Invalid URL' }, { status: 400 })
-        }
+      try {
+        resolvedVideoUrl = await getInstagramVideo(parsed.data.url)
+      } catch {
+        return Response.json(
+          { error: 'Could not fetch Instagram video. Try uploading instead.' },
+          { status: 400 }
+        )
       }
 
       filePath = await downloadVideo(resolvedVideoUrl)
@@ -493,11 +493,23 @@ export async function POST(request) {
   } catch (error) {
     console.error('identify-video error:', error)
 
-    if (String(error?.message || '').includes('Could not fetch Instagram video')) {
+    const message = String(error?.message || '')
+
+    if (message.includes('Could not fetch Instagram video')) {
       return Response.json(
         { error: 'Could not fetch Instagram video. Try uploading instead.' },
         { status: 400 }
       )
+    }
+
+    if (
+      message.includes('too large') ||
+      message.includes('Unsupported file type') ||
+      message.includes('did not return a video') ||
+      message.includes('allowed') ||
+      message.includes('Blocked host')
+    ) {
+      return Response.json({ error: message }, { status: 400 })
     }
 
     return Response.json({ error: 'Failed to process video' }, { status: 500 })

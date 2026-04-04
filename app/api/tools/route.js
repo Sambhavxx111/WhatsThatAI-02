@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getFeaturedTools, getTool, getTools, searchTools } from '@/lib/queries'
+import { enforceRateLimit } from '@/lib/api-rate-limit'
+import { formatZodError, searchSchema } from '@/lib/validation'
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const slug = searchParams.get('slug')
   const query = searchParams.get('query')
   const featured = searchParams.get('featured')
+  const filter = searchParams.get('filter')
   const limitParam = searchParams.get('limit')
   const limit = limitParam ? Number(limitParam) : undefined
 
@@ -24,7 +27,24 @@ export async function GET(request) {
   }
 
   if (query) {
-    const tools = await searchTools(query)
+    const rateLimitResponse = enforceRateLimit(request, {
+      key: 'search',
+      limit: 100,
+      windowMs: 60 * 1000,
+      message: 'Too many search requests. Please try again shortly.',
+    })
+
+    if (rateLimitResponse) {
+      return rateLimitResponse
+    }
+
+    const parsed = searchSchema.safeParse({ query, filter: filter || undefined })
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
+    }
+
+    const tools = await searchTools(parsed.data.query)
     return NextResponse.json(tools)
   }
 

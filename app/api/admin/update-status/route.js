@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdminUser } from '@/lib/auth'
+import { logAdminActionForRequest } from '@/lib/admin-audit'
 
 const allowedStatuses = new Set(['approved', 'rejected'])
 
@@ -23,6 +24,12 @@ export async function POST(request) {
     await db.tool.update({
       where: { id: toolId },
       data: { status },
+    })
+
+    await logAdminActionForRequest({
+      request,
+      adminId: adminUser.id,
+      action: status === 'approved' ? 'tool_approval' : 'tool_rejection',
     })
 
     return NextResponse.json({ success: true })

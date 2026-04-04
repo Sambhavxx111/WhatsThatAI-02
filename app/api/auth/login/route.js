@@ -1,9 +1,22 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { sanitizeUser, setAuthCookie, signAuthToken, verifyPassword } from '@/lib/auth'
+import { issueAuthTokens, sanitizeUser, setAuthCookies, verifyPassword } from '@/lib/auth'
+import { enforceRateLimit } from '@/lib/api-rate-limit'
+import { logAdminActionForRequest } from '@/lib/admin-audit'
 
 export async function POST(request) {
   try {
+    const rateLimitResponse = enforceRateLimit(request, {
+      key: 'login',
+      limit: 5,
+      windowMs: 60 * 1000,
+      message: 'Too many login attempts. Please try again later.',
+    })
+
+    if (rateLimitResponse) {
+      return rateLimitResponse
+    }
+
     const { email, password } = await request.json()
     const normalizedEmail = String(email || '').trim().toLowerCase()
     const normalizedPassword = String(password || '')
@@ -26,9 +39,17 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 })
     }
 
-    const token = signAuthToken(user)
+    if (user.role === 'admin') {
+      await logAdminActionForRequest({
+        request,
+        adminId: user.id,
+        action: 'admin_login',
+      })
+    }
+
+    const tokens = issueAuthTokens(user)
     const response = NextResponse.json({ success: true, user: sanitizeUser(user) })
-    return setAuthCookie(response, token)
+    return setAuthCookies(response, tokens)
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json({ error: 'Could not log in.' }, { status: 500 })

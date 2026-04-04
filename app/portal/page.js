@@ -71,9 +71,9 @@ export default async function PortalPage({ searchParams }) {
               Access restricted
             </p>
             <p className="mt-3 text-[15px] font-medium leading-7 text-neutral-200">
-              This portal is only available to allowlisted team emails. Sign in with your
-              internal account, or add the email to <code>ADMIN_EMAILS</code> if it should
-              have access.
+              This portal is only available to accounts that were explicitly promoted to the
+              admin role. Sign in with your internal account, and if you still cannot enter,
+              promote the account server-side before retrying.
             </p>
           </div>
         ) : null}
@@ -83,8 +83,8 @@ export default async function PortalPage({ searchParams }) {
             Access note
           </p>
           <p className="mt-3 text-[15px] font-medium leading-7 text-neutral-300">
-            If you are on the internal team and still cannot open the admin portal after
-            signing in, your email just needs to be added to the admin allowlist.
+            Admin access is no longer granted purely by email allowlists. Team members must have
+            a stored admin role in the database.
           </p>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/auth'
+import { reviewSchema, formatZodError } from '@/lib/validation'
 
 export async function POST(request) {
   try {
@@ -10,16 +11,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { toolId, rating, review } = await request.json()
-    const numericToolId = Number(toolId)
-    const numericRating = Number(rating)
-    const reviewText = String(review || '').trim()
+    const parsed = reviewSchema.safeParse(await request.json())
 
-    if (!numericToolId || !Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
-      return NextResponse.json({ error: 'A valid tool and rating are required.' }, { status: 400 })
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
     }
 
-    const tool = await db.tool.findUnique({ where: { id: numericToolId } })
+    const { toolId, rating, comment } = parsed.data
+
+    const tool = await db.tool.findUnique({ where: { id: toolId } })
 
     if (!tool) {
       return NextResponse.json({ error: 'Tool not found.' }, { status: 404 })
@@ -29,18 +29,18 @@ export async function POST(request) {
       where: {
         userId_toolId: {
           userId: user.id,
-          toolId: numericToolId,
+          toolId,
         },
       },
       update: {
-        rating: numericRating,
-        review: reviewText,
+        rating,
+        review: comment,
       },
       create: {
         userId: user.id,
-        toolId: numericToolId,
-        rating: numericRating,
-        review: reviewText,
+        toolId,
+        rating,
+        review: comment,
       },
       include: {
         user: {

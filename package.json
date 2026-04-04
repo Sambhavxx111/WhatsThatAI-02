@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
+    "db:promote-admins": "node scripts/promote-admins.js",
     "db:fill-test-tools": "node scripts/fill-test-tools.js",
     "db:replace-generated-with-real": "node scripts/replace-generated-with-real-tools.js",
     "db:import-daily-real": "node scripts/import-daily-real-tools.js"
@@ -24,6 +25,7 @@
     "ffmpeg-static": "^5.3.0",
     "framer-motion": "^11.0.0",
     "gsap": "^3.14.2",
+    "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.3",
     "lenis": "^1.3.21",
     "lucide-react": "^0.303.0",
@@ -32,14 +34,20 @@
     "react-dom": "^18.2.0",
     "tailwind-merge": "^2.2.0",
     "tesseract.js": "^7.0.0",
-    "three": "^0.160.0"
+    "three": "^0.160.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.5.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.1.0",
     "postcss": "^8.4.32",
     "prisma": "^6.5.0",
-    "tailwindcss": "^3.4.0"
+    "tailwindcss": "^3.4.0",
+    "typescript": "^6.0.2"
   }
 }
