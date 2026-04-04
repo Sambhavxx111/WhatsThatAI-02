@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Tool {
+  id          Int           @id @default(autoincrement())
+  name        String        @db.VarChar(255)
+  slug        String?       @unique(map: "slug") @db.VarChar(255)
+  description String?       @db.Text
+  category    String?       @db.VarChar(100)
+  pricing     tools_pricing?
+  websiteUrl  String?       @map("website_url") @db.Text
+  logoUrl     String?       @map("logo_url") @db.Text
+  tags        Json?
+  active      Boolean?      @default(true) @db.TinyInt
+  source      String?       @default("manual") @db.VarChar(50)
+  status      tools_status? @default(approved)
+  createdAt   DateTime?     @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime?     @default(now()) @map("updated_at") @db.Timestamp(0)
+  reviews     Review[]
+  activity    UserActivity[]
+  likes       UserLike[]
+
+  @@map("tools")
+}
+
+model User {
+  id        Int            @id @default(autoincrement())
+  name      String?        @db.VarChar(255)
+  email     String         @unique @db.VarChar(255)
+  password  String         @db.VarChar(255)
+  createdAt DateTime?      @default(now()) @map("created_at") @db.Timestamp(0)
+  reviews   Review[]
+  activity  UserActivity[]
+  likes     UserLike[]
+
+  @@map("users")
+}
+
+model Review {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  toolId    Int       @map("tool_id")
+  rating    Int
+  review    String?   @db.Text
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_reviews_user")
+  tool      Tool      @relation(fields: [toolId], references: [id], onDelete: Cascade, map: "fk_reviews_tool")
+
+  @@unique([userId, toolId], map: "user_tool_review_unique")
+  @@index([toolId], map: "reviews_tool_id_idx")
+  @@map("reviews")
+}
+
+model UserActivity {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  toolId    Int       @map("tool_id")
+  action    String    @db.VarChar(50)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_user_activity_user")
+  tool      Tool      @relation(fields: [toolId], references: [id], onDelete: Cascade, map: "fk_user_activity_tool")
+
+  @@index([userId], map: "user_activity_user_id_idx")
+  @@index([toolId], map: "user_activity_tool_id_idx")
+  @@map("user_activity")
+}
+
+model UserLike {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  toolId    Int       @map("tool_id")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_user_likes_user")
+  tool      Tool      @relation(fields: [toolId], references: [id], onDelete: Cascade, map: "fk_user_likes_tool")
+
+  @@unique([userId, toolId], map: "user_tool_like_unique")
+  @@index([userId], map: "user_likes_user_id_idx")
+  @@index([toolId], map: "user_likes_tool_id_idx")
+  @@map("user_likes")
+}
+
+enum tools_pricing {
+  free
+  freemium
+  paid
+}
+
+enum tools_status {
+  approved
+  pending
+  rejected
+}
