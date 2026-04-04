@@ -13,13 +13,13 @@ async function getPortalUser() {
 
   const payload = verifyAuthToken(token)
 
-  if (!payload?.userId) {
+  if (!payload?.sub) {
     return null
   }
 
   const user = await db.user.findUnique({
     where: {
-      id: payload.userId,
+      id: Number(payload.sub),
     },
   })
 
