@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import {
   ArrowUpRight,
-  BriefcaseBusiness,
+  Briefcase,
   FileText,
   Layers3,
   ScanSearch,
@@ -31,7 +31,7 @@ const originalFeatures = [
     title: 'Career Guidance',
     description:
       'Get practical guidance that helps users position their profile better for the roles they want.',
-    Icon: BriefcaseBusiness,
+    Icon: Briefcase,
   },
 ]
 

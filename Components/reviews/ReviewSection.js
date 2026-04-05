@@ -19,7 +19,11 @@ function formatDate(value) {
 
 function VerifiedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+    <span
+      className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 p-1 text-sky-700"
+      aria-label="Official account"
+      title="Official account"
+    >
       <svg
         viewBox="0 0 20 20"
         fill="currentColor"
@@ -32,7 +36,6 @@ function VerifiedBadge() {
           clipRule="evenodd"
         />
       </svg>
-      Verified
     </span>
   )
 }
@@ -126,7 +129,7 @@ export default function ReviewSection({ toolId, onStatsChange }) {
         body: JSON.stringify({
           toolId,
           rating,
-          review,
+          comment: review,
         }),
       })
 
