@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import AdminDashboard from '@/components/admin/AdminDashboard'
 import { db } from '@/lib/db'
 import { AUTH_COOKIE_NAME, isAdminUser, sanitizeUser, verifyAuthToken } from '@/lib/auth'
@@ -31,11 +31,11 @@ export default async function AdminPortalPage() {
   const user = await getPortalUser()
 
   if (!user) {
-    redirect('/portal')
+    notFound()
   }
 
   if (!isAdminUser(user)) {
-    redirect('/portal?denied=1')
+    notFound()
   }
 
   return <AdminDashboard />

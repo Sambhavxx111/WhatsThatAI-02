@@ -10,7 +10,7 @@ import { db } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { checkRateLimit } from '@/lib/rate-limit'
 import {
-  assertAllowedRemoteVideoUrl,
+  assertPublicHttpUrl,
   assertRemoteVideoResponse,
   assertVideoUpload,
   getClientIp,
@@ -254,7 +254,7 @@ async function getInstagramVideo(url) {
 }
 
 async function downloadVideo(videoUrl) {
-  await assertAllowedRemoteVideoUrl(videoUrl)
+  await assertPublicHttpUrl(videoUrl)
 
   const response = await fetch(videoUrl, {
     method: 'GET',

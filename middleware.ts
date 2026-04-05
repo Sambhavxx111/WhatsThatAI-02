@@ -60,6 +60,17 @@ function isProtectedPath(pathname: string): boolean {
 }
 
 function forbiddenResponse(request: NextRequest): NextResponse {
+  if (request.nextUrl.pathname.startsWith('/portal') || request.nextUrl.pathname === '/admin') {
+    const response = new NextResponse('404 Not Found', {
+      status: 404,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+      },
+    })
+
+    return applySecurityHeaders(response)
+  }
+
   const response = request.nextUrl.pathname.startsWith('/api/')
     ? NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     : new NextResponse('403 Forbidden', {
