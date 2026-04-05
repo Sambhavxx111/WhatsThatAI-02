@@ -13,6 +13,8 @@ export default function VideoIdentifierPanel() {
   const [detectedText, setDetectedText] = useState('')
   const [matches, setMatches] = useState([])
 
+  const REQUEST_TIMEOUT_MS = 45000
+
   function resetResults() {
     setError('')
     setDetectedText('')
@@ -29,19 +31,38 @@ export default function VideoIdentifierPanel() {
     setDetectedText('')
     setMatches([])
 
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
     try {
-      const response = await fetch('/api/identify-video', requestInit)
+      const response = await fetch('/api/identify-video', {
+        ...requestInit,
+        signal: controller.signal,
+      })
       const data = await response.json()
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Please log in to use Reel analysis.')
+        }
+
+        if (response.status === 429) {
+          throw new Error(data?.error || 'Too many analysis requests. Please try again shortly.')
+        }
+
         throw new Error(data?.error || 'Could not analyze this video.')
       }
 
       setDetectedText(data.detectedText || '')
       setMatches(Array.isArray(data.matches) ? data.matches : [])
     } catch (requestError) {
-      setError(requestError.message || 'Could not analyze this video.')
+      if (requestError?.name === 'AbortError') {
+        setError('Analysis is taking too long right now. Please try again in a moment or upload a shorter clip.')
+      } else {
+        setError(requestError.message || 'Could not analyze this video.')
+      }
     } finally {
+      clearTimeout(timeoutId)
       setLoading(false)
     }
   }

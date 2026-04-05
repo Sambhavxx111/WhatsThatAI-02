@@ -26,6 +26,8 @@ const TEMP_DIR = path.join(os.tmpdir(), 'whatsthatai')
 const TESSDATA_DIR = path.join(TEMP_DIR, 'tessdata')
 const ROOT_TESSDATA_FILE = path.join(process.cwd(), 'eng.traineddata')
 const TESSDATA_FILE = path.join(TESSDATA_DIR, 'eng.traineddata')
+const MAX_OCR_TIME_MS = 30000
+const MAX_TOTAL_PROCESSING_MS = 45000
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -312,9 +314,9 @@ async function extractFrames(filePath, framesDir) {
     '-i',
     filePath,
     '-vf',
-    'fps=1,scale=1280:-1',
+    'fps=0.5,scale=960:-1',
     '-frames:v',
-    '5',
+    '3',
     framePattern,
   ])
 
@@ -344,10 +346,23 @@ async function processVideo(filePath) {
     const textChunks = []
 
     try {
-      for (const framePath of framePaths) {
-        const result = await worker.recognize(framePath)
-        textChunks.push(result?.data?.text || '')
-      }
+      await Promise.race([
+        (async () => {
+          for (const framePath of framePaths) {
+            const result = await worker.recognize(framePath)
+            const text = result?.data?.text || ''
+            textChunks.push(text)
+
+            // Stop early if we already captured enough visible text to match against the catalog.
+            if (cleanDetectedText(textChunks.join(' ')).length >= 120) {
+              break
+            }
+          }
+        })(),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('OCR timed out')), MAX_OCR_TIME_MS)
+        }),
+      ])
     } finally {
       await worker.terminate()
     }
@@ -426,6 +441,7 @@ async function removeTempPath(targetPath) {
 export async function POST(request) {
   let filePath = ''
   let failureStage = 'initialization'
+  let processingTimeoutId
 
   try {
     const user = await getAuthenticatedUser(request)
@@ -484,10 +500,22 @@ export async function POST(request) {
       filePath = await downloadVideo(resolvedVideoUrl)
     }
 
-    failureStage = 'ocr-processing'
-    const detectedText = await processVideo(filePath)
-    failureStage = 'database-matching'
-    const matches = await findMatchingTools(detectedText)
+    const processingPromise = (async () => {
+      failureStage = 'ocr-processing'
+      const detectedText = await processVideo(filePath)
+      failureStage = 'database-matching'
+      const matches = await findMatchingTools(detectedText)
+
+      return { detectedText, matches }
+    })()
+
+    const timeoutPromise = new Promise((_, reject) => {
+      processingTimeoutId = setTimeout(() => {
+        reject(new Error('Analysis timed out'))
+      }, MAX_TOTAL_PROCESSING_MS)
+    })
+
+    const { detectedText, matches } = await Promise.race([processingPromise, timeoutPromise])
 
     return Response.json({
       detectedText,
@@ -513,6 +541,8 @@ export async function POST(request) {
       message.includes('Could not download video') ||
       message.includes('Could not load OCR language data') ||
       message.includes('FFmpeg is not available') ||
+      message.includes('OCR timed out') ||
+      message.includes('Analysis timed out') ||
       message.includes('allowed') ||
       message.includes('Blocked host')
     ) {
@@ -521,6 +551,7 @@ export async function POST(request) {
 
     return Response.json({ error: `Failed to process video during ${failureStage}` }, { status: 500 })
   } finally {
+    clearTimeout(processingTimeoutId)
     await removeTempPath(filePath)
   }
 }
