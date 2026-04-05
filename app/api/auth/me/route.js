@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser, isAdminUser } from '@/lib/auth'
+import { isWhatsThatAIOfficialEmail } from '@/lib/official-accounts'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,7 @@ export async function GET(request) {
         ? {
             ...user,
             isAdmin: isAdminUser(user),
+            isOfficial: isWhatsThatAIOfficialEmail(user.email),
           }
         : null,
     })

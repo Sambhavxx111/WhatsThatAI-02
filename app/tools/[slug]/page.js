@@ -31,6 +31,26 @@ function isWhatsThatAIOriginal(tool) {
   return String(tool?.source || '').toLowerCase() === 'whatsthatai-original'
 }
 
+function OriginalBlueTick() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+      <svg
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        className="h-4 w-4"
+        aria-hidden="true"
+      >
+        <path
+          fillRule="evenodd"
+          d="M10 1.5a2 2 0 0 1 1.63.84l.66.93 1.13.18a2 2 0 0 1 1.5 1.14l.5 1.03 1.03.5a2 2 0 0 1 1.14 1.5l.18 1.13.93.66a2 2 0 0 1 .84 1.63 2 2 0 0 1-.84 1.63l-.93.66-.18 1.13a2 2 0 0 1-1.14 1.5l-1.03.5-.5 1.03a2 2 0 0 1-1.5 1.14l-1.13.18-.66.93A2 2 0 0 1 10 18.5a2 2 0 0 1-1.63-.84l-.66-.93-1.13-.18a2 2 0 0 1-1.5-1.14l-.5-1.03-1.03-.5a2 2 0 0 1-1.14-1.5l-.18-1.13-.93-.66A2 2 0 0 1 .5 10a2 2 0 0 1 .84-1.63l.93-.66.18-1.13a2 2 0 0 1 1.14-1.5l1.03-.5.5-1.03a2 2 0 0 1 1.5-1.14l1.13-.18.66-.93A2 2 0 0 1 10 1.5Zm3.03 6.22a.75.75 0 0 0-1.06-1.06L8.75 9.88 7.53 8.66a.75.75 0 0 0-1.06 1.06l1.75 1.75a.75.75 0 0 0 1.06 0l3.75-3.75Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      WhatsThatAI Original
+    </span>
+  )
+}
+
 export default function ToolPage() {
   const params = useParams()
   const slug = params.slug || params.Slug
@@ -166,12 +186,23 @@ export default function ToolPage() {
               <div className="flex-1">
                 {showOriginalBadge ? (
                   <div className="mb-3">
-                    <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
-                      WhatsThatAI Original
-                    </span>
+                    <OriginalBlueTick />
                   </div>
                 ) : null}
-                <h1 className="mb-3 text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">{tool.name}</h1>
+                <div className="mb-3 flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">{tool.name}</h1>
+                  {showOriginalBadge ? (
+                    <span className="text-sky-500" aria-label="WhatsThatAI Original verified">
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6">
+                        <path
+                          fillRule="evenodd"
+                          d="M10 1.5a2 2 0 0 1 1.63.84l.66.93 1.13.18a2 2 0 0 1 1.5 1.14l.5 1.03 1.03.5a2 2 0 0 1 1.14 1.5l.18 1.13.93.66a2 2 0 0 1 .84 1.63 2 2 0 0 1-.84 1.63l-.93.66-.18 1.13a2 2 0 0 1-1.14 1.5l-1.03.5-.5 1.03a2 2 0 0 1-1.5 1.14l-1.13.18-.66.93A2 2 0 0 1 10 18.5a2 2 0 0 1-1.63-.84l-.66-.93-1.13-.18a2 2 0 0 1-1.5-1.14l-.5-1.03-1.03-.5a2 2 0 0 1-1.14-1.5l-.18-1.13-.93-.66A2 2 0 0 1 .5 10a2 2 0 0 1 .84-1.63l.93-.66.18-1.13a2 2 0 0 1 1.14-1.5l1.03-.5.5-1.03a2 2 0 0 1 1.5-1.14l1.13-.18.66-.93A2 2 0 0 1 10 1.5Zm3.03 6.22a.75.75 0 0 0-1.06-1.06L8.75 9.88 7.53 8.66a.75.75 0 0 0-1.06 1.06l1.75 1.75a.75.75 0 0 0 1.06 0l3.75-3.75Z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-semibold text-slate-600">
                     {tool.category}

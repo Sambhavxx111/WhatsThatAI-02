@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/auth'
+import { isWhatsThatAIOfficialEmail } from '@/lib/official-accounts'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +22,7 @@ export async function GET(request, { params }) {
             select: {
               id: true,
               name: true,
+              email: true,
             },
           },
         },
@@ -36,7 +38,11 @@ export async function GET(request, { params }) {
         rating: review.rating,
         review: review.review || '',
         createdAt: review.createdAt,
-        user: review.user,
+        user: {
+          id: review.user?.id,
+          name: review.user?.name,
+          isOfficial: isWhatsThatAIOfficialEmail(review.user?.email),
+        },
         isOwner: user ? user.id === review.userId : false,
       }))
     )

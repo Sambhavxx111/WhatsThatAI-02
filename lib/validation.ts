@@ -34,6 +34,10 @@ export const reviewSchema = z.object({
   comment: optionalSanitizedString(300).default(''),
 })
 
+export const reviewDeleteSchema = z.object({
+  toolId: z.coerce.number().int().positive(),
+})
+
 export const searchSchema = z.object({
   query: sanitizedString(1, 120),
   filter: optionalSanitizedString(80),

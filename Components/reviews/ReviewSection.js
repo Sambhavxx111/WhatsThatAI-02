@@ -17,6 +17,26 @@ function formatDate(value) {
   }
 }
 
+function VerifiedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+      <svg
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        className="h-3.5 w-3.5"
+        aria-hidden="true"
+      >
+        <path
+          fillRule="evenodd"
+          d="M10 1.5a2 2 0 0 1 1.63.84l.66.93 1.13.18a2 2 0 0 1 1.5 1.14l.5 1.03 1.03.5a2 2 0 0 1 1.14 1.5l.18 1.13.93.66a2 2 0 0 1 .84 1.63 2 2 0 0 1-.84 1.63l-.93.66-.18 1.13a2 2 0 0 1-1.14 1.5l-1.03.5-.5 1.03a2 2 0 0 1-1.5 1.14l-1.13.18-.66.93A2 2 0 0 1 10 18.5a2 2 0 0 1-1.63-.84l-.66-.93-1.13-.18a2 2 0 0 1-1.5-1.14l-.5-1.03-1.03-.5a2 2 0 0 1-1.14-1.5l-.18-1.13-.93-.66A2 2 0 0 1 .5 10a2 2 0 0 1 .84-1.63l.93-.66.18-1.13a2 2 0 0 1 1.14-1.5l1.03-.5.5-1.03a2 2 0 0 1 1.5-1.14l1.13-.18.66-.93A2 2 0 0 1 10 1.5Zm3.03 6.22a.75.75 0 0 0-1.06-1.06L8.75 9.88 7.53 8.66a.75.75 0 0 0-1.06 1.06l1.75 1.75a.75.75 0 0 0 1.06 0l3.75-3.75Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      Verified
+    </span>
+  )
+}
+
 export default function ReviewSection({ toolId, onStatsChange }) {
   const [user, setUser] = useState(null)
   const [reviews, setReviews] = useState([])
@@ -36,6 +56,9 @@ export default function ReviewSection({ toolId, onStatsChange }) {
     if (ownReview) {
       setRating(ownReview.rating)
       setReview(ownReview.review || '')
+    } else {
+      setRating(0)
+      setReview('')
     }
 
     const totalReviews = nextReviews.length
@@ -122,6 +145,42 @@ export default function ReviewSection({ toolId, onStatsChange }) {
     }
   }
 
+  async function handleDeleteReview() {
+    if (!user) {
+      return
+    }
+
+    setSaving(true)
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/reviews', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          toolId,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Could not delete review.')
+      }
+
+      setRating(0)
+      setReview('')
+      setMessage('Your review has been deleted.')
+      await loadReviews()
+    } catch (error) {
+      setMessage(error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm text-slate-500">Loading reviews...</div>
   }
@@ -145,7 +204,10 @@ export default function ReviewSection({ toolId, onStatsChange }) {
               <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                 <div className="mb-3 flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-bold text-slate-900">{item.user?.name || 'Anonymous user'}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold text-slate-900">{item.user?.name || 'Anonymous user'}</p>
+                      {item.user?.isOfficial ? <VerifiedBadge /> : null}
+                    </div>
                     <p className="text-xs text-slate-500 font-medium">{formatDate(item.createdAt)}</p>
                   </div>
                   <StarRating rating={item.rating} totalReviews={0} />
@@ -188,13 +250,26 @@ export default function ReviewSection({ toolId, onStatsChange }) {
 
             {message ? <p className="text-sm font-medium text-slate-600">{message}</p> : null}
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? 'Saving...' : 'Submit Review'}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? 'Saving...' : reviews.some((item) => item.isOwner) ? 'Update Review' : 'Submit Review'}
+              </button>
+
+              {reviews.some((item) => item.isOwner) ? (
+                <button
+                  type="button"
+                  onClick={handleDeleteReview}
+                  disabled={saving}
+                  className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? 'Working...' : 'Delete Review'}
+                </button>
+              ) : null}
+            </div>
           </form>
         ) : (
           <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm font-medium text-slate-500">
