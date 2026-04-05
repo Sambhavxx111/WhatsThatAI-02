@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { execFile } from 'node:child_process'
@@ -21,20 +22,12 @@ import { formatZodError, instagramUrlSchema } from '@/lib/validation'
 const require = createRequire(import.meta.url)
 const importedFfmpegPath = require('ffmpeg-static')
 const execFileAsync = promisify(execFile)
-const TEMP_DIR = path.join(process.cwd(), 'temp')
-const TESSDATA_DIR = path.join(process.cwd(), 'temp', 'tessdata')
+const TEMP_DIR = path.join(os.tmpdir(), 'whatsthatai')
+const TESSDATA_DIR = path.join(TEMP_DIR, 'tessdata')
 const TESSDATA_FILE = path.join(TESSDATA_DIR, 'eng.traineddata.gz')
 const TESSDATA_URL = 'https://tessdata.projectnaptha.com/4.0.0/eng.traineddata.gz'
-const TESSERACT_WORKER_PATH = path.join(
-  process.cwd(),
-  'node_modules',
-  'tesseract.js',
-  'src',
-  'worker-script',
-  'node',
-  'index.js'
-)
-const TESSERACT_CORE_PATH = path.join(process.cwd(), 'node_modules', 'tesseract.js-core')
+const TESSERACT_WORKER_PATH = require.resolve('tesseract.js/src/worker-script/node/index.js')
+const TESSERACT_CORE_PATH = require.resolve('tesseract.js-core/tesseract-core.wasm.js')
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -429,6 +422,7 @@ async function removeTempPath(targetPath) {
 
 export async function POST(request) {
   let filePath = ''
+  let failureStage = 'initialization'
 
   try {
     const user = await getAuthenticatedUser(request)
@@ -451,6 +445,7 @@ export async function POST(request) {
     const contentType = request.headers.get('content-type') || ''
 
     if (contentType.includes('multipart/form-data')) {
+      failureStage = 'upload-validation'
       const formData = await request.formData()
       const uploadedFile =
         formData.get('file') ||
@@ -463,6 +458,7 @@ export async function POST(request) {
 
       filePath = await saveUploadedVideo(uploadedFile)
     } else {
+      failureStage = 'instagram-url-validation'
       const parsed = instagramUrlSchema.safeParse(await request.json())
 
       if (!parsed.success) {
@@ -472,6 +468,7 @@ export async function POST(request) {
       let resolvedVideoUrl = parsed.data.url
 
       try {
+        failureStage = 'instagram-video-resolution'
         resolvedVideoUrl = await getInstagramVideo(parsed.data.url)
       } catch {
         return Response.json(
@@ -480,10 +477,13 @@ export async function POST(request) {
         )
       }
 
+      failureStage = 'video-download'
       filePath = await downloadVideo(resolvedVideoUrl)
     }
 
+    failureStage = 'ocr-processing'
     const detectedText = await processVideo(filePath)
+    failureStage = 'database-matching'
     const matches = await findMatchingTools(detectedText)
 
     return Response.json({
@@ -492,6 +492,7 @@ export async function POST(request) {
     })
   } catch (error) {
     console.error('identify-video error:', error)
+    console.error('identify-video stage:', failureStage)
 
     const message = String(error?.message || '')
 
@@ -506,13 +507,16 @@ export async function POST(request) {
       message.includes('too large') ||
       message.includes('Unsupported file type') ||
       message.includes('did not return a video') ||
+      message.includes('Could not download video') ||
+      message.includes('Could not load OCR language data') ||
+      message.includes('FFmpeg is not available') ||
       message.includes('allowed') ||
       message.includes('Blocked host')
     ) {
       return Response.json({ error: message }, { status: 400 })
     }
 
-    return Response.json({ error: 'Failed to process video' }, { status: 500 })
+    return Response.json({ error: `Failed to process video during ${failureStage}` }, { status: 500 })
   } finally {
     await removeTempPath(filePath)
   }
