@@ -24,10 +24,8 @@ const importedFfmpegPath = require('ffmpeg-static')
 const execFileAsync = promisify(execFile)
 const TEMP_DIR = path.join(os.tmpdir(), 'whatsthatai')
 const TESSDATA_DIR = path.join(TEMP_DIR, 'tessdata')
-const TESSDATA_FILE = path.join(TESSDATA_DIR, 'eng.traineddata.gz')
-const TESSDATA_URL = 'https://tessdata.projectnaptha.com/4.0.0/eng.traineddata.gz'
-const TESSERACT_WORKER_PATH = require.resolve('tesseract.js/src/worker-script/node/index.js')
-const TESSERACT_CORE_PATH = require.resolve('tesseract.js-core/tesseract-core.wasm.js')
+const ROOT_TESSDATA_FILE = path.join(process.cwd(), 'eng.traineddata')
+const TESSDATA_FILE = path.join(TESSDATA_DIR, 'eng.traineddata')
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -275,18 +273,11 @@ async function ensureLanguageData() {
     return
   } catch {
     await fs.mkdir(TESSDATA_DIR, { recursive: true })
-
-    const response = await fetch(TESSDATA_URL, {
-      method: 'GET',
-      cache: 'force-cache',
-    })
-
-    if (!response.ok) {
+    try {
+      await fs.copyFile(ROOT_TESSDATA_FILE, TESSDATA_FILE)
+    } catch {
       throw new Error('Could not load OCR language data')
     }
-
-    const buffer = Buffer.from(await response.arrayBuffer())
-    await fs.writeFile(TESSDATA_FILE, buffer)
   }
 }
 
@@ -346,9 +337,9 @@ async function processVideo(filePath) {
     }
 
     const worker = await createWorker('eng', 1, {
-      langPath: `${TESSDATA_DIR}${path.sep}`,
-      workerPath: TESSERACT_WORKER_PATH,
-      corePath: TESSERACT_CORE_PATH,
+      langPath: TESSDATA_DIR,
+      cachePath: TESSDATA_DIR,
+      gzip: false,
     })
     const textChunks = []
 
