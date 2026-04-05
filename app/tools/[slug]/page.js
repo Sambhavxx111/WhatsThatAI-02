@@ -27,6 +27,10 @@ function getLogoSource(tool) {
   }
 }
 
+function isWhatsThatAIOriginal(tool) {
+  return String(tool?.source || '').toLowerCase() === 'whatsthatai-original'
+}
+
 export default function ToolPage() {
   const params = useParams()
   const slug = params.slug || params.Slug
@@ -133,6 +137,7 @@ export default function ToolPage() {
 
   const logoSource = getLogoSource(tool)
   const showLogo = Boolean(logoSource) && !logoFailed
+  const showOriginalBadge = isWhatsThatAIOriginal(tool)
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] px-4 pb-20 pt-32 sm:px-6 lg:px-8">
@@ -159,6 +164,13 @@ export default function ToolPage() {
                 )}
               </div>
               <div className="flex-1">
+                {showOriginalBadge ? (
+                  <div className="mb-3">
+                    <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                      WhatsThatAI Original
+                    </span>
+                  </div>
+                ) : null}
                 <h1 className="mb-3 text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">{tool.name}</h1>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-semibold text-slate-600">

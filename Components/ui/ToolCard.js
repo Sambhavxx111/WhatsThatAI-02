@@ -23,11 +23,16 @@ function getLogoSource(tool) {
   }
 }
 
+function isWhatsThatAIOriginal(tool) {
+  return String(tool?.source || '').toLowerCase() === 'whatsthatai-original'
+}
+
 export default function ToolCard({ tool, index }) {
   const [isHovered, setIsHovered] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
   const logoSource = getLogoSource(tool)
   const showLogo = Boolean(logoSource) && !logoFailed
+  const showOriginalBadge = isWhatsThatAIOriginal(tool)
 
   function handleClick() {
     trackToolActivity(tool.id, 'click')
@@ -70,6 +75,11 @@ export default function ToolCard({ tool, index }) {
             </div>
 
             <div className="mb-4 space-y-2 flex-grow">
+              {showOriginalBadge ? (
+                <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                  WhatsThatAI Original
+                </span>
+              ) : null}
               <h3 className="text-lg font-bold tracking-tight text-slate-900 transition-colors group-hover:text-blue-600">
                 {tool.name}
               </h3>

@@ -381,7 +381,6 @@ async function processVideo(filePath) {
             const result = await worker.recognize(framePath)
             const text = result?.data?.text || ''
             textChunks.push(text)
-
           }
         })(),
         new Promise((_, reject) => {
