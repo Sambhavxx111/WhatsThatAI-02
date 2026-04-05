@@ -21,13 +21,15 @@ import { formatZodError, instagramUrlSchema } from '@/lib/validation'
 
 const require = createRequire(import.meta.url)
 const importedFfmpegPath = require('ffmpeg-static')
+const tesseractWorkerPath = require.resolve('tesseract.js/src/worker-script/node/index.js')
+const tesseractCorePath = require.resolve('tesseract.js-core/tesseract-core-lstm.wasm.js')
 const execFileAsync = promisify(execFile)
 const TEMP_DIR = path.join(os.tmpdir(), 'whatsthatai')
 const TESSDATA_DIR = path.join(TEMP_DIR, 'tessdata')
 const ROOT_TESSDATA_FILE = path.join(process.cwd(), 'eng.traineddata')
 const TESSDATA_FILE = path.join(TESSDATA_DIR, 'eng.traineddata')
-const MAX_OCR_TIME_MS = 30000
-const MAX_TOTAL_PROCESSING_MS = 45000
+const MAX_OCR_TIME_MS = 90000
+const MAX_TOTAL_PROCESSING_MS = 120000
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -314,9 +316,9 @@ async function extractFrames(filePath, framesDir) {
     '-i',
     filePath,
     '-vf',
-    'fps=0.5,scale=960:-1',
+    'fps=1,scale=960:-1',
     '-frames:v',
-    '3',
+    '5',
     framePattern,
   ])
 
@@ -339,6 +341,8 @@ async function processVideo(filePath) {
     }
 
     const worker = await createWorker('eng', 1, {
+      workerPath: tesseractWorkerPath,
+      corePath: tesseractCorePath,
       langPath: TESSDATA_DIR,
       cachePath: TESSDATA_DIR,
       gzip: false,
@@ -353,10 +357,6 @@ async function processVideo(filePath) {
             const text = result?.data?.text || ''
             textChunks.push(text)
 
-            // Stop early if we already captured enough visible text to match against the catalog.
-            if (cleanDetectedText(textChunks.join(' ')).length >= 120) {
-              break
-            }
           }
         })(),
         new Promise((_, reject) => {

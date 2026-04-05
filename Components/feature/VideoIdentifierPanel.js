@@ -13,7 +13,7 @@ export default function VideoIdentifierPanel() {
   const [detectedText, setDetectedText] = useState('')
   const [matches, setMatches] = useState([])
 
-  const REQUEST_TIMEOUT_MS = 45000
+  const REQUEST_TIMEOUT_MS = 120000
 
   function resetResults() {
     setError('')
@@ -57,7 +57,7 @@ export default function VideoIdentifierPanel() {
       setMatches(Array.isArray(data.matches) ? data.matches : [])
     } catch (requestError) {
       if (requestError?.name === 'AbortError') {
-        setError('Analysis is taking too long right now. Please try again in a moment or upload a shorter clip.')
+        setError('Analysis is taking longer than expected. Please wait a bit and try again.')
       } else {
         setError(requestError.message || 'Could not analyze this video.')
       }
