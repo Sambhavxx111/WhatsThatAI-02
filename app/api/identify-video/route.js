@@ -21,13 +21,19 @@ import { formatZodError, instagramUrlSchema } from '@/lib/validation'
 
 const require = createRequire(import.meta.url)
 const importedFfmpegPath = require('ffmpeg-static')
-const tesseractWorkerPath = require.resolve('tesseract.js/src/worker-script/node/index.js')
-const tesseractCorePath = require.resolve('tesseract.js-core/tesseract-core-lstm.wasm.js')
 const execFileAsync = promisify(execFile)
 const TEMP_DIR = path.join(os.tmpdir(), 'whatsthatai')
 const TESSDATA_DIR = path.join(TEMP_DIR, 'tessdata')
 const ROOT_TESSDATA_FILE = path.join(process.cwd(), 'eng.traineddata')
 const TESSDATA_FILE = path.join(TESSDATA_DIR, 'eng.traineddata')
+const TESSERACT_WORKER_CANDIDATES = [
+  path.join(process.cwd(), 'node_modules', 'tesseract.js', 'src', 'worker-script', 'node', 'index.js'),
+  path.join(process.cwd(), '.next', 'standalone', 'node_modules', 'tesseract.js', 'src', 'worker-script', 'node', 'index.js'),
+]
+const TESSERACT_CORE_CANDIDATES = [
+  path.join(process.cwd(), 'node_modules', 'tesseract.js-core', 'tesseract-core-lstm.wasm.js'),
+  path.join(process.cwd(), '.next', 'standalone', 'node_modules', 'tesseract.js-core', 'tesseract-core-lstm.wasm.js'),
+]
 const MAX_OCR_TIME_MS = 90000
 const MAX_TOTAL_PROCESSING_MS = 120000
 
@@ -285,6 +291,16 @@ async function ensureLanguageData() {
   }
 }
 
+function resolveExistingPath(candidates, errorMessage) {
+  const resolvedPath = candidates.find((candidate) => existsSync(candidate))
+
+  if (!resolvedPath) {
+    throw new Error(errorMessage)
+  }
+
+  return resolvedPath
+}
+
 async function extractFrames(filePath, framesDir) {
   const ffmpegPathCandidates = [
     importedFfmpegPath && existsSync(importedFfmpegPath)
@@ -340,9 +356,18 @@ async function processVideo(filePath) {
       return ''
     }
 
+    const workerPath = resolveExistingPath(
+      TESSERACT_WORKER_CANDIDATES,
+      'Tesseract worker is not available'
+    )
+    const corePath = resolveExistingPath(
+      TESSERACT_CORE_CANDIDATES,
+      'Tesseract core is not available'
+    )
+
     const worker = await createWorker('eng', 1, {
-      workerPath: tesseractWorkerPath,
-      corePath: tesseractCorePath,
+      workerPath,
+      corePath,
       langPath: TESSDATA_DIR,
       cachePath: TESSDATA_DIR,
       gzip: false,
@@ -541,6 +566,8 @@ export async function POST(request) {
       message.includes('Could not download video') ||
       message.includes('Could not load OCR language data') ||
       message.includes('FFmpeg is not available') ||
+      message.includes('Tesseract worker is not available') ||
+      message.includes('Tesseract core is not available') ||
       message.includes('OCR timed out') ||
       message.includes('Analysis timed out') ||
       message.includes('allowed') ||
