@@ -291,12 +291,24 @@ async function ensureLanguageData() {
 }
 
 async function extractFrames(filePath, framesDir) {
-  const ffmpegPath =
+  const ffmpegPathCandidates = [
     importedFfmpegPath && existsSync(importedFfmpegPath)
       ? importedFfmpegPath
-      : path.join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg.exe')
+      : null,
+    path.join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg.exe'),
+    path.join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg'),
+    'ffmpeg',
+  ].filter(Boolean)
 
-  if (!ffmpegPath || !existsSync(ffmpegPath)) {
+  const ffmpegPath = ffmpegPathCandidates.find((candidate) => {
+    if (candidate === 'ffmpeg') {
+      return true
+    }
+
+    return existsSync(candidate)
+  })
+
+  if (!ffmpegPath) {
     throw new Error('FFmpeg is not available')
   }
 
