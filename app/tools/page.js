@@ -13,6 +13,9 @@ const PRICING_FILTERS = [
   { label: 'Paid', value: 'paid' },
 ]
 
+const ORIGINALS_BANNER_DISMISS_KEY = 'whatsthatai-originals-banner-dismissed-at'
+const ORIGINALS_BANNER_DISMISS_MS = 24 * 60 * 60 * 1000
+
 function ToolsPageContent() {
   const [tools, setTools] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -38,7 +41,12 @@ function ToolsPageContent() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const isDismissed = window.localStorage.getItem('whatsthatai-originals-banner-dismissed') === 'true'
+    const dismissedAtValue = window.localStorage.getItem(ORIGINALS_BANNER_DISMISS_KEY)
+    const dismissedAt = dismissedAtValue ? Number(dismissedAtValue) : 0
+    const isDismissed =
+      Number.isFinite(dismissedAt) &&
+      dismissedAt > 0 &&
+      Date.now() - dismissedAt < ORIGINALS_BANNER_DISMISS_MS
     const isOriginalsView = (searchParams.get('source') || '').toLowerCase() === 'whatsthatai-original'
 
     setShowOriginalsBanner(!isDismissed && !isOriginalsView)
@@ -87,7 +95,7 @@ function ToolsPageContent() {
 
   function handleDismissOriginalsBanner() {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('whatsthatai-originals-banner-dismissed', 'true')
+      window.localStorage.setItem(ORIGINALS_BANNER_DISMISS_KEY, String(Date.now()))
     }
 
     setShowOriginalsBanner(false)
