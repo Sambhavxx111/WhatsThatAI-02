@@ -42,7 +42,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-20 flex flex-col gap-6 border-t border-slate-200 pt-8 text-xs font-medium text-slate-500 md:flex-row md:items-center md:justify-between">
-          <p>© {new Date().getFullYear()} WhatsThatAI. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} WhatsThatAI. All rights reserved.</p>
           <div className="flex gap-6">
             <a href="#" className="transition hover:text-slate-900">Twitter</a>
             <a href="#" className="transition hover:text-slate-900">GitHub</a>
@@ -53,4 +53,3 @@ export default function Footer() {
     </footer>
   )
 }
-
