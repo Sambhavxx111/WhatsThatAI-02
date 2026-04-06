@@ -64,30 +64,6 @@ export default function Home() {
             </Link>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, delay: 0.26 }}
-            className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3"
-          >
-            {[
-              ['Curated catalog', '1.4K+ approved tools'],
-              ['Personal workflow', 'Reviews and My Collection'],
-              ['Private team ops', 'Separate admin portal'],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-[24px] border border-slate-200 bg-white p-6 text-left shadow-sm"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {label}
-                </p>
-                <p className="mt-4 text-[17px] font-semibold tracking-tight text-slate-900">
-                  {value}
-                </p>
-              </div>
-            ))}
-          </motion.div>
         </div>
       </section>
     </div>

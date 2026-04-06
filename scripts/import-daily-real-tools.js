@@ -16,6 +16,7 @@ const STATE_DIR = path.join(process.cwd(), 'data')
 const STATE_FILE = path.join(STATE_DIR, 'daily-import-state.json')
 const CACHE_FILE = path.join(STATE_DIR, 'daily-import-catalog.json')
 const DAILY_BATCH_SIZE = 200
+const UNIQUE_CONSTRAINT_ERROR_CODE = 'P2002'
 
 const CATEGORY_KEYWORDS = [
   { category: 'Video', keywords: ['video', 'reel', 'avatar', 'editing', 'subtitle', 'film'] },
@@ -184,19 +185,28 @@ async function main() {
       trustedSource: true,
     })
 
-    await db.tool.create({
-      data: {
-        name,
-        slug,
-        description: evaluation.description,
-        category,
-        pricing,
-        websiteUrl,
-        source: 'daily-real-import',
-        status: evaluation.status,
-        active: evaluation.active,
-      },
-    })
+    try {
+      await db.tool.create({
+        data: {
+          name,
+          slug,
+          description: evaluation.description,
+          category,
+          pricing,
+          websiteUrl,
+          source: 'daily-real-import',
+          status: evaluation.status,
+          active: evaluation.active,
+        },
+      })
+    } catch (error) {
+      if (error?.code === UNIQUE_CONSTRAINT_ERROR_CODE) {
+        skipped += 1
+        continue
+      }
+
+      throw error
+    }
 
     inserted += 1
 
