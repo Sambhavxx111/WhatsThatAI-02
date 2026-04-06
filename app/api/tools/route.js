@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getFeaturedTools, getTool, getTools, searchTools } from '@/lib/queries'
+import { getFeaturedTools, getTool, getTools, getToolsPage, searchTools } from '@/lib/queries'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
 import { formatZodError, searchSchema } from '@/lib/validation'
 
@@ -9,8 +9,13 @@ export async function GET(request) {
   const query = searchParams.get('query')
   const featured = searchParams.get('featured')
   const filter = searchParams.get('filter')
+  const pricing = searchParams.get('pricing') || ''
+  const source = searchParams.get('source') || ''
   const limitParam = searchParams.get('limit')
+  const offsetParam = searchParams.get('offset')
+  const batched = searchParams.get('batched') === 'true'
   const limit = limitParam ? Number(limitParam) : undefined
+  const offset = offsetParam ? Number(offsetParam) : 0
 
   if (slug) {
     const tool = await getTool(slug)
@@ -44,8 +49,29 @@ export async function GET(request) {
       return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
     }
 
+    if (batched) {
+      const payload = await getToolsPage({
+        query: parsed.data.query,
+        pricing,
+        source,
+        limit,
+        offset,
+      })
+      return NextResponse.json(payload)
+    }
+
     const tools = await searchTools(parsed.data.query)
     return NextResponse.json(tools)
+  }
+
+  if (batched) {
+    const payload = await getToolsPage({
+      pricing,
+      source,
+      limit,
+      offset,
+    })
+    return NextResponse.json(payload)
   }
 
   const tools = await getTools()

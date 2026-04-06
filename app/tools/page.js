@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import ToolCard from '@/components/ui/ToolCard'
@@ -12,6 +12,7 @@ const PRICING_FILTERS = [
   { label: 'Freemium', value: 'freemium' },
   { label: 'Paid', value: 'paid' },
 ]
+const TOOLS_BATCH_SIZE = 24
 
 const ORIGINALS_BANNER_DISMISS_KEY = 'whatsthatai-originals-banner-dismissed-at'
 const ORIGINALS_BANNER_DISMISS_MS = 24 * 60 * 60 * 1000
@@ -22,21 +23,24 @@ function ToolsPageContent() {
   const [pricingFilter, setPricingFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('')
   const [showOriginalsBanner, setShowOriginalsBanner] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalTools, setTotalTools] = useState(0)
+  const loadMoreRef = useRef(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  useEffect(() => {
-    fetch('/api/tools')
-      .then((res) => res.json())
-      .then((data) => setTools(data))
-  }, [])
+  const currentQuery = useMemo(() => searchParams.get('q') || '', [searchParams])
+  const currentPricing = useMemo(() => searchParams.get('pricing') || 'all', [searchParams])
+  const currentSource = useMemo(() => searchParams.get('source') || '', [searchParams])
 
   useEffect(() => {
-    setSearchQuery(searchParams.get('q') || '')
-    setPricingFilter(searchParams.get('pricing') || 'all')
-    setSourceFilter(searchParams.get('source') || '')
-  }, [searchParams])
+    setSearchQuery(currentQuery)
+    setPricingFilter(currentPricing)
+    setSourceFilter(currentSource)
+  }, [currentPricing, currentQuery, currentSource])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -51,6 +55,90 @@ function ToolsPageContent() {
 
     setShowOriginalsBanner(!isDismissed && !isOriginalsView)
   }, [searchParams])
+
+  useEffect(() => {
+    let isCancelled = false
+
+    async function loadInitialTools() {
+      setIsLoading(true)
+      setIsLoadingMore(false)
+
+      try {
+        const params = new URLSearchParams()
+        params.set('batched', 'true')
+        params.set('limit', String(TOOLS_BATCH_SIZE))
+        params.set('offset', '0')
+
+        if (currentQuery.trim()) {
+          params.set('query', currentQuery.trim())
+        }
+
+        if (currentPricing !== 'all') {
+          params.set('pricing', currentPricing)
+        }
+
+        if (currentSource.trim()) {
+          params.set('source', currentSource.trim())
+        }
+
+        const response = await fetch(`/api/tools?${params.toString()}`, {
+          cache: 'no-store',
+        })
+        const data = await response.json()
+
+        if (isCancelled) {
+          return
+        }
+
+        setTools(Array.isArray(data.tools) ? data.tools : [])
+        setHasMore(Boolean(data.hasMore))
+        setTotalTools(Number(data.total) || 0)
+      } catch {
+        if (!isCancelled) {
+          setTools([])
+          setHasMore(false)
+          setTotalTools(0)
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void loadInitialTools()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [currentPricing, currentQuery, currentSource])
+
+  useEffect(() => {
+    const target = loadMoreRef.current
+
+    if (!target || !hasMore || isLoading || isLoadingMore) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+
+        if (entry?.isIntersecting) {
+          void loadMoreTools()
+        }
+      },
+      {
+        rootMargin: '320px 0px',
+      }
+    )
+
+    observer.observe(target)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [hasMore, isLoading, isLoadingMore, tools.length, currentPricing, currentQuery, currentSource])
 
   function updateUrl(nextQuery, nextPricing, nextSource = sourceFilter) {
     const params = new URLSearchParams(searchParams.toString())
@@ -101,22 +189,57 @@ function ToolsPageContent() {
     setShowOriginalsBanner(false)
   }
 
-  const filteredTools = tools.filter((tool) => {
-    const normalizedQuery = searchQuery.toLowerCase()
-    const matchesQuery =
-      !normalizedQuery ||
-      tool.name.toLowerCase().includes(normalizedQuery) ||
-      tool.category.toLowerCase().includes(normalizedQuery) ||
-      tool.description.toLowerCase().includes(normalizedQuery)
+  async function loadMoreTools() {
+    if (isLoading || isLoadingMore || !hasMore) {
+      return
+    }
 
-    const matchesPricing =
-      pricingFilter === 'all' || String(tool.pricing || '').toLowerCase() === pricingFilter
+    setIsLoadingMore(true)
 
-    const matchesSource =
-      !sourceFilter || String(tool.source || '').toLowerCase() === sourceFilter.toLowerCase()
+    try {
+      const params = new URLSearchParams()
+      params.set('batched', 'true')
+      params.set('limit', String(TOOLS_BATCH_SIZE))
+      params.set('offset', String(tools.length))
 
-    return matchesQuery && matchesPricing && matchesSource
-  })
+      if (currentQuery.trim()) {
+        params.set('query', currentQuery.trim())
+      }
+
+      if (currentPricing !== 'all') {
+        params.set('pricing', currentPricing)
+      }
+
+      if (currentSource.trim()) {
+        params.set('source', currentSource.trim())
+      }
+
+      const response = await fetch(`/api/tools?${params.toString()}`, {
+        cache: 'no-store',
+      })
+      const data = await response.json()
+
+      setTools((currentTools) => {
+        const incomingTools = Array.isArray(data.tools) ? data.tools : []
+        const existingIds = new Set(currentTools.map((tool) => tool.id))
+        const mergedTools = [...currentTools]
+
+        incomingTools.forEach((tool) => {
+          if (!existingIds.has(tool.id)) {
+            mergedTools.push(tool)
+          }
+        })
+
+        return mergedTools
+      })
+      setHasMore(Boolean(data.hasMore))
+      setTotalTools(Number(data.total) || totalTools)
+    } catch {
+      setHasMore(false)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden px-4 pb-24 pt-32 sm:px-6 lg:px-8 bg-[#FAFAFA]">
@@ -171,7 +294,14 @@ function ToolsPageContent() {
 
         <div className="mb-10 text-center text-[14px]">
           <p className="text-slate-500">
-            Showing <span className="font-semibold text-slate-900">{filteredTools.length}</span> tools
+            Showing <span className="font-semibold text-slate-900">{tools.length}</span>
+            {totalTools > tools.length ? (
+              <span>
+                {' '}
+                of <span className="font-semibold text-slate-900">{totalTools}</span>
+              </span>
+            ) : null}{' '}
+            tools
             {pricingFilter !== 'all' ? (
               <span>
                 {' '}
@@ -181,9 +311,16 @@ function ToolsPageContent() {
           </p>
         </div>
 
-        {filteredTools.length > 0 ? (
+        {isLoading ? (
+          <div className="rounded-[32px] border border-slate-200 bg-white px-8 py-20 text-center shadow-sm">
+            <h2 className="text-2xl font-bold text-slate-900">Loading tools...</h2>
+            <p className="mx-auto mt-4 max-w-md text-[15px] text-slate-500 font-medium">
+              We&apos;re fetching a lighter batch first so browsing stays smooth.
+            </p>
+          </div>
+        ) : tools.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filteredTools.map((tool, index) => (
+            {tools.map((tool, index) => (
               <ToolCard key={tool.id} tool={tool} index={index} />
             ))}
           </div>
@@ -195,6 +332,18 @@ function ToolsPageContent() {
             </p>
           </div>
         )}
+
+        {!isLoading && tools.length > 0 ? (
+          <div ref={loadMoreRef} className="mt-10 flex min-h-[64px] items-center justify-center">
+            {isLoadingMore ? (
+              <p className="text-sm font-medium text-slate-500">Loading more tools...</p>
+            ) : hasMore ? (
+              <p className="text-sm font-medium text-slate-400">Scroll to load more</p>
+            ) : (
+              <p className="text-sm font-medium text-slate-400">You&apos;ve reached the end of the catalog</p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {showOriginalsBanner ? (
