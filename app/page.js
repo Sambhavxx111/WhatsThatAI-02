@@ -2,6 +2,9 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import GuideMascotLauncher from '@/components/assistant/GuideMascotLauncher'
+
+const ENABLE_GUIDE_MASCOT = true
 
 export default function Home() {
   return (
@@ -66,6 +69,8 @@ export default function Home() {
 
         </div>
       </section>
+
+      {ENABLE_GUIDE_MASCOT ? <GuideMascotLauncher /> : null}
     </div>
   )
 }
