@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 const DISMISS_KEY = 'whatsthatai-guide-mascot-dismissed-at'
 const DISMISS_WINDOW_MS = 12 * 60 * 60 * 1000
 const CHATBOT_STATE_KEY = 'whatsthatai-guide-chat-state'
+const BUBBLE_DISMISS_KEY = 'whatsthatai-guide-bubble-dismissed-at'
 
 const quickPrompts = [
   'I need AI tools for resume building',
@@ -36,6 +37,7 @@ export default function GuideMascotLauncher() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
+  const [showBubble, setShowBubble] = useState(true)
   const [goal, setGoal] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [recommendedTools, setRecommendedTools] = useState([])
@@ -67,6 +69,15 @@ export default function GuideMascotLauncher() {
     if (!isDismissed) {
       setIsVisible(true)
     }
+
+    const bubbleDismissedAtValue = window.localStorage.getItem(BUBBLE_DISMISS_KEY)
+    const bubbleDismissedAt = bubbleDismissedAtValue ? Number(bubbleDismissedAtValue) : 0
+    const isBubbleDismissed =
+      Number.isFinite(bubbleDismissedAt) &&
+      bubbleDismissedAt > 0 &&
+      Date.now() - bubbleDismissedAt < DISMISS_WINDOW_MS
+
+    setShowBubble(!isBubbleDismissed)
 
     const savedState = window.localStorage.getItem(CHATBOT_STATE_KEY)
     if (savedState) {
@@ -132,13 +143,12 @@ export default function GuideMascotLauncher() {
     }
   }, [])
 
-  function dismissLauncher() {
+  function dismissBubble() {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(DISMISS_KEY, String(Date.now()))
+      window.localStorage.setItem(BUBBLE_DISMISS_KEY, String(Date.now()))
     }
 
-    setIsOpen(false)
-    setIsVisible(false)
+    setShowBubble(false)
   }
 
   async function addToCollection(toolId) {
@@ -238,7 +248,7 @@ export default function GuideMascotLauncher() {
     <div className="pointer-events-none fixed bottom-6 right-4 z-[70] hidden sm:block lg:right-8">
       <div className="pointer-events-auto flex items-end gap-3">
         <AnimatePresence>
-          {!isOpen ? (
+          {!isOpen && showBubble ? (
             <motion.div
               initial={{ opacity: 0, x: 12, y: 10 }}
               animate={{ opacity: 1, x: 0, y: 0 }}
@@ -247,7 +257,7 @@ export default function GuideMascotLauncher() {
             >
               <button
                 type="button"
-                onClick={dismissLauncher}
+                onClick={dismissBubble}
                 className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                 aria-label="Dismiss guide"
               >
@@ -279,9 +289,9 @@ export default function GuideMascotLauncher() {
                 initial={{ opacity: 0, y: 12, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                className="absolute bottom-[5.5rem] right-0 w-[380px] overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl"
+                className="absolute bottom-[5.5rem] right-0 flex h-[min(78vh,760px)] w-[380px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl"
               >
-                <div className="max-h-[min(74vh,760px)] overflow-y-auto px-5 pb-5 pt-5">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-600">
