@@ -4,7 +4,7 @@ import path from 'node:path'
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024
 const AVATAR_DIR = path.join(process.cwd(), 'public', 'uploads', 'profile-pictures')
-const AVATAR_URL_PREFIX = '/uploads/profile-pictures/'
+const AVATAR_URL_PREFIX = '/api/profile/avatar/'
 const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 const ALLOWED_EXTENSIONS = new Map([
   ['image/png', '.png'],
@@ -16,6 +16,26 @@ type AvatarUploadFile = Pick<File, 'type' | 'size' | 'name' | 'arrayBuffer'>
 
 function normalizeExtension(fileName: string) {
   return path.extname(path.basename(fileName || '')).toLowerCase()
+}
+
+export function getAvatarFilePath(fileName: string) {
+  return path.join(AVATAR_DIR, path.basename(fileName || ''))
+}
+
+export function getAvatarContentType(fileName: string) {
+  const extension = normalizeExtension(fileName)
+
+  switch (extension) {
+    case '.png':
+      return 'image/png'
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg'
+    case '.webp':
+      return 'image/webp'
+    default:
+      return 'application/octet-stream'
+  }
 }
 
 export function validateAvatarFile(file: AvatarUploadFile) {
@@ -66,12 +86,21 @@ export async function saveProfileImage(file: AvatarUploadFile) {
 export async function removeProfileImage(publicUrl: string | null | undefined) {
   const normalized = String(publicUrl || '')
 
-  if (!normalized.startsWith(AVATAR_URL_PREFIX)) {
+  if (!normalized) {
     return
   }
 
-  const fileName = path.basename(normalized)
-  const filePath = path.join(AVATAR_DIR, fileName)
+  const urlWithoutQuery = normalized.split('?')[0]
+  const isManagedAvatar =
+    urlWithoutQuery.startsWith(AVATAR_URL_PREFIX) ||
+    urlWithoutQuery.startsWith('/uploads/profile-pictures/')
+
+  if (!isManagedAvatar) {
+    return
+  }
+
+  const fileName = path.basename(urlWithoutQuery)
+  const filePath = getAvatarFilePath(fileName)
 
   await fs.rm(filePath, { force: true })
 }
