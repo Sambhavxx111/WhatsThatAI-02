@@ -1,6 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -32,6 +33,11 @@ export default function GuideMascotLauncher() {
   const [isOpen, setIsOpen] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
   const [goal, setGoal] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [recommendedTools, setRecommendedTools] = useState([])
+  const [message, setMessage] = useState('')
+  const [savedToolIds, setSavedToolIds] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
 
   const trimmedGoal = useMemo(() => goal.trim(), [goal])
 
@@ -57,15 +63,82 @@ export default function GuideMascotLauncher() {
     setIsVisible(false)
   }
 
-  function goToSuggestedTools(nextGoal = trimmedGoal) {
+  async function addToCollection(toolId) {
+    try {
+      const response = await fetch('/api/likes', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ toolId }),
+      })
+
+      if (response.status === 401) {
+        router.push('/login')
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Could not save tool')
+      }
+
+      setSavedToolIds((current) => (current.includes(toolId) ? current : [...current, toolId]))
+    } catch {
+      setMessage('Could not save this tool right now.')
+    }
+  }
+
+  async function goToSuggestedTools(nextGoal = trimmedGoal) {
     const query = String(nextGoal || '').trim()
 
     if (!query) {
-      router.push('/tools')
       return
     }
 
-    router.push(`/tools?q=${encodeURIComponent(query)}`)
+    setIsLoading(true)
+    setMessage('')
+    setRecommendedTools([])
+
+    try {
+      const response = await fetch('/api/assistant/recommend', {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          goal: query,
+        }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Could not fetch tool suggestions.')
+      }
+
+      const rankedTools = Array.isArray(data?.tools) ? data.tools.slice(0, 4) : []
+
+      if (!rankedTools.length) {
+        setSearchQuery(data?.searchQuery || query)
+        setMessage(
+          data?.assistantMessage ||
+            'I could not find a confident match yet. Try describing the task a bit more clearly.'
+        )
+        return
+      }
+
+      setRecommendedTools(rankedTools)
+      setSearchQuery(data?.searchQuery || query)
+      setMessage(
+        data?.assistantMessage || 'Here are a few tools that look like a good fit for your goal.'
+      )
+    } catch (error) {
+      setMessage('I could not fetch recommendations right now.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (!isVisible) {
@@ -143,7 +216,7 @@ export default function GuideMascotLauncher() {
                 </div>
 
                 <p className="mt-3 text-sm leading-6 text-slate-500">
-                  Share a project, workflow, or task. I&apos;ll send you into the marketplace with a focused starting point.
+                  Share a project, workflow, or task. I&apos;ll use our guide model to understand the goal and suggest a few strong fits from the marketplace.
                 </p>
 
                 <textarea
@@ -169,11 +242,11 @@ export default function GuideMascotLauncher() {
                 <div className="mt-5 flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => goToSuggestedTools()}
+                    onClick={() => void goToSuggestedTools()}
                     className="inline-flex h-[46px] items-center justify-center rounded-[16px] bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={!trimmedGoal}
+                    disabled={!trimmedGoal || isLoading}
                   >
-                    Show matching tools
+                    {isLoading ? 'Finding tools...' : 'Show matching tools'}
                   </button>
                   <button
                     type="button"
@@ -183,6 +256,70 @@ export default function GuideMascotLauncher() {
                     Browse Originals
                   </button>
                 </div>
+
+                {message ? (
+                  <p className="mt-4 text-sm font-medium leading-6 text-slate-500">
+                    {message}
+                  </p>
+                ) : null}
+
+                {recommendedTools.length > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    {recommendedTools.map((tool) => (
+                      <div
+                        key={tool.id}
+                        className="rounded-[20px] border border-slate-200 bg-slate-50 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-sm font-semibold text-slate-900">
+                                {tool.name}
+                              </h3>
+                              <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                {tool.category}
+                              </span>
+                            </div>
+                            <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-500">
+                              {tool.description}
+                            </p>
+                            {tool.reason ? (
+                              <p className="mt-2 text-[11px] font-medium leading-5 text-sky-700">
+                                {tool.reason}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-2">
+                          <Link
+                            href={`/tools/${tool.slug}`}
+                            className="inline-flex h-9 items-center justify-center rounded-[12px] bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800"
+                          >
+                            Open tool
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => void addToCollection(tool.id)}
+                            className="inline-flex h-9 items-center justify-center rounded-[12px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                          >
+                            {savedToolIds.includes(tool.id) ? 'Saved' : 'Add to Collection'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(`/tools?q=${encodeURIComponent(searchQuery || trimmedGoal)}`)
+                      }
+                      className="w-full rounded-[14px] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      See all matching tools
+                    </button>
+                  </div>
+                ) : null}
               </motion.div>
             ) : null}
           </AnimatePresence>

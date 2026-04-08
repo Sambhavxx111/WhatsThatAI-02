@@ -57,6 +57,10 @@ export const instagramUrlSchema = z.object({
     }, 'URL must be a valid Instagram URL'),
 })
 
+export const assistantRecommendationSchema = z.object({
+  goal: sanitizedString(6, 600),
+})
+
 export function formatZodError(error: z.ZodError): string {
   return error.issues.map((issue) => issue.message).join(', ')
 }
