@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
@@ -86,11 +87,19 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <div className="min-w-[148px] rounded-[20px] border border-white/6 bg-white/[0.04] px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-              Pending
-            </p>
-            <p className="mt-2 text-3xl font-semibold text-white">{tools.length}</p>
+          <div className="flex flex-col gap-3 sm:items-end">
+            <Link
+              href="/portal/admin/security"
+              className="inline-flex h-11 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.04] px-5 text-[14px] font-semibold text-white transition hover:bg-white/[0.08]"
+            >
+              View security logs
+            </Link>
+            <div className="min-w-[148px] rounded-[20px] border border-white/6 bg-white/[0.04] px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                Pending
+              </p>
+              <p className="mt-2 text-3xl font-semibold text-white">{tools.length}</p>
+            </div>
           </div>
         </div>
 

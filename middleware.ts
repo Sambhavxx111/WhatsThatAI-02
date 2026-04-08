@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
+import { getAdminAppUrl, isAdminHost } from '@/lib/admin-host'
 
 const ACCESS_COOKIE_NAME = 'whatsthatai_access_token'
 const ADMIN_ROLE = 'admin'
@@ -18,20 +19,24 @@ function getJwtSecret(): Uint8Array {
 function buildCsp(): string {
   const directives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https:",
-    "style-src 'self' 'unsafe-inline' https:",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
     "connect-src 'self' https: blob:",
     "media-src 'self' blob: https:",
+    "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
+    "manifest-src 'self'",
   ]
 
   if (process.env.NODE_ENV === 'production') {
     directives.push('upgrade-insecure-requests')
+  } else {
+    directives.push("script-src-elem 'self' 'unsafe-inline' 'unsafe-eval'")
   }
 
   return directives.join('; ')
@@ -84,6 +89,20 @@ function forbiddenResponse(request: NextRequest): NextResponse {
 }
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith('/portal') || request.nextUrl.pathname.startsWith('/api/admin/')) {
+    if (!isAdminHost(request.headers.get('host'))) {
+      const adminAppUrl = getAdminAppUrl()
+
+      if (adminAppUrl && request.nextUrl.pathname.startsWith('/portal')) {
+        return forbiddenResponse(request)
+      }
+
+      if (request.nextUrl.pathname.startsWith('/api/admin/')) {
+        return forbiddenResponse(request)
+      }
+    }
+  }
+
   if (isProtectedPath(request.nextUrl.pathname)) {
     const token = request.cookies.get(ACCESS_COOKIE_NAME)?.value
 

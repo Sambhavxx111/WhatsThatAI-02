@@ -4,7 +4,7 @@ import { saveTempVideoFile } from '@/lib/upload-security'
 
 export async function POST(request: Request) {
   try {
-    const rateLimitResponse = enforceRateLimit(request, {
+    const rateLimitResponse = await enforceRateLimit(request, {
       key: 'video-upload',
       limit: 10,
       windowMs: 60 * 1000,

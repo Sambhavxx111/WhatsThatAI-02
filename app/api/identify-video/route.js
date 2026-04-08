@@ -9,12 +9,11 @@ import { promisify } from 'node:util'
 import { createWorker } from 'tesseract.js'
 import { db } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/auth'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { enforceRateLimit } from '@/lib/api-rate-limit'
 import {
   assertPublicHttpUrl,
   assertRemoteVideoResponse,
   assertVideoUpload,
-  getClientIp,
 } from '@/lib/security'
 import { validateSafeInstagramUrl } from '@/lib/url-validation'
 import { formatZodError, instagramUrlSchema } from '@/lib/validation'
@@ -474,15 +473,15 @@ export async function POST(request) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const ip = getClientIp(request)
-    const rateLimit = checkRateLimit({
-      key: `identify-video:${user.id}:${ip}`,
+    const rateLimitResponse = await enforceRateLimit(request, {
+      key: `identify-video:${user.id}`,
       limit: 5,
       windowMs: 15 * 60 * 1000,
+      message: 'Too many analysis requests. Please try again later.',
     })
 
-    if (!rateLimit.allowed) {
-      return Response.json({ error: 'Too many analysis requests. Please try again later.' }, { status: 429 })
+    if (rateLimitResponse) {
+      return rateLimitResponse
     }
 
     const contentType = request.headers.get('content-type') || ''
@@ -581,3 +580,4 @@ export async function POST(request) {
     await removeTempPath(filePath)
   }
 }
+

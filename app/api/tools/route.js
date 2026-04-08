@@ -32,7 +32,7 @@ export async function GET(request) {
   }
 
   if (query) {
-    const rateLimitResponse = enforceRateLimit(request, {
+    const rateLimitResponse = await enforceRateLimit(request, {
       key: 'search',
       limit: 100,
       windowMs: 60 * 1000,

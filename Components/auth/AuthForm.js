@@ -12,8 +12,11 @@ export default function AuthForm({ mode = 'login' }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [mfaCode, setMfaCode] = useState('')
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [requiresMfa, setRequiresMfa] = useState(false)
 
   const isSignup = mode === 'signup'
   const nextPath = searchParams.get('redirect') || searchParams.get('next') || '/tools'
@@ -22,8 +25,33 @@ export default function AuthForm({ mode = 'login' }) {
     event.preventDefault()
     setSubmitting(true)
     setError('')
+    setMessage('')
 
     try {
+      if (requiresMfa) {
+        const verifyResponse = await fetch('/api/auth/admin-mfa/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            code: mfaCode,
+          }),
+        })
+
+        const verifyData = await verifyResponse.json()
+
+        if (!verifyResponse.ok) {
+          throw new Error(verifyData.error || 'Verification failed.')
+        }
+
+        window.dispatchEvent(new Event('auth-changed'))
+        window.dispatchEvent(new Event('auth-state-changed'))
+        router.push(nextPath)
+        router.refresh()
+        return
+      }
+
       const response = await fetch(`/api/auth/${isSignup ? 'signup' : 'login'}`, {
         method: 'POST',
         headers: {
@@ -40,6 +68,19 @@ export default function AuthForm({ mode = 'login' }) {
 
       if (!response.ok) {
         throw new Error(data.error || 'Authentication failed.')
+      }
+
+      if (data.verificationRequired) {
+        setMessage(data.message || 'Check your email to verify your account.')
+        setName('')
+        setPassword('')
+        return
+      }
+
+      if (data.requiresMfa) {
+        setRequiresMfa(true)
+        setMessage(data.message || 'Enter your verification code to continue.')
+        return
       }
 
       window.dispatchEvent(new Event('auth-changed'))
@@ -73,16 +114,18 @@ export default function AuthForm({ mode = 'login' }) {
         </div>
 
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-[40px] sm:leading-[1.1]">
-          {isSignup ? 'Join WhatsThatAI' : 'Log in to continue'}
+          {requiresMfa ? 'Verify admin sign-in' : isSignup ? 'Join WhatsThatAI' : 'Log in to continue'}
         </h1>
         <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-slate-500 font-medium">
-          {isSignup
+          {requiresMfa
+            ? 'Enter the 6-digit verification code we sent to your admin email to complete sign-in.'
+            : isSignup
             ? 'Create your account to rate tools, save your collection, and build a more personalized discovery flow.'
             : 'Access your account to review tools, track activity, and jump back into your saved collection.'}
         </p>
 
         <div className="mt-8 grid gap-5">
-          {isSignup ? (
+          {!requiresMfa && isSignup ? (
             <div>
               <label className="mb-2.5 block text-[13px] font-bold uppercase tracking-[0.1em] text-slate-500">Name</label>
               <input
@@ -96,6 +139,7 @@ export default function AuthForm({ mode = 'login' }) {
             </div>
           ) : null}
 
+          {!requiresMfa ? (
           <div>
             <label className="mb-2.5 block text-[13px] font-bold uppercase tracking-[0.1em] text-slate-500">Email</label>
             <input
@@ -107,7 +151,9 @@ export default function AuthForm({ mode = 'login' }) {
               placeholder="you@example.com"
             />
           </div>
+          ) : null}
 
+          {!requiresMfa ? (
           <div>
             <label className="mb-2.5 block text-[13px] font-bold uppercase tracking-[0.1em] text-slate-500">Password</label>
             <input
@@ -120,7 +166,31 @@ export default function AuthForm({ mode = 'login' }) {
               placeholder="Minimum 6 characters"
             />
           </div>
+          ) : null}
+
+          {requiresMfa ? (
+            <div>
+              <label className="mb-2.5 block text-[13px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                Verification Code
+              </label>
+              <input
+                type="text"
+                value={mfaCode}
+                onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+                inputMode="numeric"
+                className="w-full rounded-[16px] border border-slate-200 bg-slate-50 px-4 py-3.5 text-[15px] font-semibold tracking-[0.3em] text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400"
+                placeholder="123456"
+              />
+            </div>
+          ) : null}
         </div>
+
+        {message ? (
+          <p className="mt-5 rounded-[12px] border border-blue-500/20 bg-blue-50 px-4 py-3 text-[14px] font-bold text-blue-600">
+            {message}
+          </p>
+        ) : null}
 
         {error ? (
           <p className="mt-5 rounded-[12px] border border-rose-500/20 bg-rose-50 px-4 py-3 text-[14px] font-bold text-rose-600">
@@ -129,16 +199,29 @@ export default function AuthForm({ mode = 'login' }) {
         ) : null}
 
         <div className="mt-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[14px] font-medium text-slate-500">
-            {isSignup ? 'Already have an account?' : 'New here?'}{' '}
-            <a
-              href={isSignup ? '/login' : '/signup'}
-              
-              className="font-bold text-blue-600 transition hover:text-blue-500 hover:underline"
+          {!requiresMfa ? (
+            <p className="text-[14px] font-medium text-slate-500">
+              {isSignup ? 'Already have an account?' : 'New here?'}{' '}
+              <a
+                href={isSignup ? '/login' : '/signup'}
+                className="font-bold text-blue-600 transition hover:text-blue-500 hover:underline"
+              >
+                {isSignup ? 'Log in' : 'Create one'}
+              </a>
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setRequiresMfa(false)
+                setMfaCode('')
+                setMessage('')
+              }}
+              className="text-[14px] font-bold text-blue-600 transition hover:text-blue-500 hover:underline"
             >
-              {isSignup ? 'Log in' : 'Create one'}
-            </a>
-          </p>
+              Use a different account
+            </button>
+          )}
 
           <button
             type="submit"
@@ -148,7 +231,7 @@ export default function AuthForm({ mode = 'login' }) {
               submitting && 'scale-[0.99] hover:scale-[0.99]'
             )}
           >
-            {submitting ? 'Please wait...' : isSignup ? 'Create Account' : 'Log In'}
+            {submitting ? 'Please wait...' : requiresMfa ? 'Verify code' : isSignup ? 'Create Account' : 'Log In'}
             {!submitting ? <ArrowRight className="h-4 w-4" /> : null}
           </button>
         </div>

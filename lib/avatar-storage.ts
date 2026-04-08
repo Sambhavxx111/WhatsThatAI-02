@@ -12,11 +12,13 @@ const ALLOWED_EXTENSIONS = new Map([
   ['image/webp', '.webp'],
 ])
 
-function normalizeExtension(fileName) {
+type AvatarUploadFile = Pick<File, 'type' | 'size' | 'name' | 'arrayBuffer'>
+
+function normalizeExtension(fileName: string) {
   return path.extname(path.basename(fileName || '')).toLowerCase()
 }
 
-export function validateAvatarFile(file) {
+export function validateAvatarFile(file: AvatarUploadFile) {
   const mimeType = String(file?.type || '').toLowerCase()
   const size = Number(file?.size || 0)
   const originalName = String(file?.name || '')
@@ -43,7 +45,7 @@ export function validateAvatarFile(file) {
   }
 }
 
-export async function saveProfileImage(file) {
+export async function saveProfileImage(file: AvatarUploadFile) {
   const { extension, mimeType, size } = validateAvatarFile(file)
   const fileName = `${randomUUID()}${extension}`
   const filePath = path.join(AVATAR_DIR, fileName)
@@ -61,7 +63,7 @@ export async function saveProfileImage(file) {
   }
 }
 
-export async function removeProfileImage(publicUrl) {
+export async function removeProfileImage(publicUrl: string | null | undefined) {
   const normalized = String(publicUrl || '')
 
   if (!normalized.startsWith(AVATAR_URL_PREFIX)) {

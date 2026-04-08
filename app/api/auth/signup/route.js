@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { hashPassword, issueAuthTokens, sanitizeUser, setAuthCookies } from '@/lib/auth'
-import { checkRateLimit } from '@/lib/rate-limit'
-import { getClientIp } from '@/lib/security'
+import { hashPassword } from '@/lib/auth'
+import { enforceRateLimit } from '@/lib/api-rate-limit'
+import { logSecurityEvent, logUnauthorizedAccess } from '@/lib/securityLogger'
+import { createOpaqueToken, createVerificationTokenRecord, sendEmailVerificationEmail } from '@/lib/verification'
 
 function getReservedAdminEmailSet() {
   return new Set(
@@ -15,15 +16,15 @@ function getReservedAdminEmailSet() {
 
 export async function POST(request) {
   try {
-    const ip = getClientIp(request)
-    const rateLimit = checkRateLimit({
-      key: `signup:${ip}`,
+    const rateLimitResponse = await enforceRateLimit(request, {
+      key: 'signup',
       limit: 5,
       windowMs: 60 * 60 * 1000,
+      message: 'Too many signup attempts. Please try again later.',
     })
 
-    if (!rateLimit.allowed) {
-      return NextResponse.json({ error: 'Too many signup attempts. Please try again later.' }, { status: 429 })
+    if (rateLimitResponse) {
+      return rateLimitResponse
     }
 
     const { name, email, password } = await request.json()
@@ -39,6 +40,14 @@ export async function POST(request) {
     }
 
     if (getReservedAdminEmailSet().has(normalizedEmail)) {
+      await logUnauthorizedAccess({
+        req: request,
+        status: 403,
+        metadata: {
+          email: normalizedEmail,
+          reason: 'reserved_admin_email_signup_attempt',
+        },
+      })
       return NextResponse.json(
         { error: 'This email is reserved for internal admin access.' },
         { status: 403 }
@@ -60,12 +69,44 @@ export async function POST(request) {
         email: normalizedEmail,
         password: hashedPassword,
         role: 'user',
+        emailVerifiedAt: null,
       },
     })
 
-    const tokens = issueAuthTokens(user)
-    const response = NextResponse.json({ success: true, user: sanitizeUser(user) })
-    return setAuthCookies(response, tokens)
+    const verificationToken = createOpaqueToken(32)
+
+    await createVerificationTokenRecord({
+      userId: user.id,
+      email: user.email,
+      type: 'email_verification',
+      rawToken: verificationToken,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    })
+
+    await sendEmailVerificationEmail({
+      email: user.email,
+      token: verificationToken,
+      name: user.name,
+    })
+
+    await logSecurityEvent({
+      userId: user.id,
+      event: 'SIGNUP_SUCCESS',
+      req: request,
+      status: 201,
+      metadata: {
+        role: user.role,
+      },
+    })
+
+    return NextResponse.json(
+      {
+        success: true,
+        verificationRequired: true,
+        message: 'Check your email to verify your account before logging in.',
+      },
+      { status: 201 }
+    )
   } catch (error) {
     console.error('Signup error:', error)
     return NextResponse.json({ error: 'Could not create account.' }, { status: 500 })

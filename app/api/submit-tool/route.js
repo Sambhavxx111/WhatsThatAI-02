@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { checkRateLimit } from '@/lib/rate-limit'
-import { getClientIp, assertPublicWebsiteUrl } from '@/lib/security'
+import { enforceRateLimit } from '@/lib/api-rate-limit'
+import { assertPublicWebsiteUrl } from '@/lib/security'
 import { formatZodError, toolSubmissionSchema } from '@/lib/validation'
 import {
   evaluateToolForInsertion,
@@ -12,15 +12,15 @@ import {
 
 export async function POST(request) {
   try {
-    const ip = getClientIp(request)
-    const rateLimit = checkRateLimit({
-      key: `submit-tool:${ip}`,
+    const rateLimitResponse = await enforceRateLimit(request, {
+      key: 'submit-tool',
       limit: 10,
       windowMs: 60 * 60 * 1000,
+      message: 'Too many submissions. Please try again later.',
     })
 
-    if (!rateLimit.allowed) {
-      return NextResponse.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 })
+    if (rateLimitResponse) {
+      return rateLimitResponse
     }
 
     const parsed = toolSubmissionSchema.safeParse(await request.json())

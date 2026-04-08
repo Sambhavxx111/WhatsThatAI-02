@@ -2,12 +2,20 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdminUser } from '@/lib/auth'
 import { logAdminActionForRequest } from '@/lib/admin-audit'
+import { logUnauthorizedAccess } from '@/lib/securityLogger'
 
 export async function POST(request) {
   try {
     const adminUser = await requireAdminUser(request)
 
     if (!adminUser) {
+      await logUnauthorizedAccess({
+        req: request,
+        status: 403,
+        metadata: {
+          route: 'admin_delete_tool',
+        },
+      })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 

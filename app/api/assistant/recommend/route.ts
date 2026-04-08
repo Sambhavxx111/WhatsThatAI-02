@@ -369,7 +369,7 @@ function buildReason(tool: ToolCandidate, plan: GeminiPlan): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const rateLimitResponse = enforceRateLimit(request, {
+    const rateLimitResponse = await enforceRateLimit(request, {
       key: 'assistant-recommend',
       limit: 20,
       windowMs: 60 * 1000,

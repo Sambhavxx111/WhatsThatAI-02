@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { getRefreshUser, issueAuthTokens, setAuthCookies } from '@/lib/auth'
+import { clearAuthCookies, rotateSessionTokens, setAuthCookies } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
+import { logSecurityEvent, logUnauthorizedAccess } from '@/lib/securityLogger'
 
 export async function POST(request: NextRequest) {
   try {
-    const rateLimitResponse = enforceRateLimit(request, {
+    const rateLimitResponse = await enforceRateLimit(request, {
       key: 'auth-refresh',
       limit: 20,
       windowMs: 60 * 1000,
@@ -16,27 +16,35 @@ export async function POST(request: NextRequest) {
       return rateLimitResponse
     }
 
-    const sessionUser = await getRefreshUser(request)
+    const session = await rotateSessionTokens(request)
 
-    if (!sessionUser) {
-      return NextResponse.json({ error: 'Invalid refresh token.' }, { status: 401 })
+    if (!session || !session.user) {
+      await logUnauthorizedAccess({
+        req: request,
+        status: 401,
+        metadata: {
+          reason: 'invalid_refresh_token',
+        },
+      })
+      const response = NextResponse.json({ error: 'Invalid refresh token.' }, { status: 401 })
+      return clearAuthCookies(response)
     }
 
-    const user = await db.user.findUnique({
-      where: {
-        id: sessionUser.id,
+    await logSecurityEvent({
+      userId: session.user.id,
+      event: 'TOKEN_REFRESH',
+      req: request,
+      status: 200,
+      metadata: {
+        role: session.user.role,
       },
     })
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found.' }, { status: 404 })
-    }
-
-    const tokens = issueAuthTokens(user)
     const response = NextResponse.json({ success: true })
-    return setAuthCookies(response, tokens)
+    return setAuthCookies(response, session)
   } catch (error) {
     console.error('Refresh token error:', error)
     return NextResponse.json({ error: 'Could not refresh session.' }, { status: 500 })
   }
 }
+

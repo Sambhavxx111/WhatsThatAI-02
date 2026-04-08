@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const rateLimitResponse = enforceRateLimit(request, {
+    const rateLimitResponse = await enforceRateLimit(request, {
       key: 'profile-avatar',
       limit: 20,
       windowMs: 60 * 1000,
