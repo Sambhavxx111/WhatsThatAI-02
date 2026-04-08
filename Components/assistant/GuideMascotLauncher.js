@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 const DISMISS_KEY = 'whatsthatai-guide-mascot-dismissed-at'
 const DISMISS_WINDOW_MS = 12 * 60 * 60 * 1000
@@ -35,6 +35,7 @@ function MascotCharacter() {
 export default function GuideMascotLauncher() {
   const router = useRouter()
   const pathname = usePathname()
+  const scrollContainerRef = useRef(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
   const [showBubble, setShowBubble] = useState(true)
@@ -141,7 +142,59 @@ export default function GuideMascotLauncher() {
     return () => {
       isCancelled = true
     }
+  }, [pathname])
+
+  useEffect(() => {
+    const handleAuthRefresh = () => {
+      void (async () => {
+        try {
+          const response = await fetch('/api/auth/me', {
+            credentials: 'include',
+            cache: 'no-store',
+          })
+          const data = await response.json()
+          setUser(data?.user || null)
+        } catch {
+          setUser(null)
+        } finally {
+          setIsAuthLoading(false)
+        }
+      })()
+    }
+
+    window.addEventListener('focus', handleAuthRefresh)
+    window.addEventListener('auth-state-changed', handleAuthRefresh)
+
+    return () => {
+      window.removeEventListener('focus', handleAuthRefresh)
+      window.removeEventListener('auth-state-changed', handleAuthRefresh)
+    }
   }, [])
+
+  useEffect(() => {
+    const element = scrollContainerRef.current
+
+    if (!element || !isOpen) {
+      return
+    }
+
+    function handleWheel(event) {
+      const canScroll = element.scrollHeight > element.clientHeight
+
+      if (!canScroll) {
+        return
+      }
+
+      event.preventDefault()
+      element.scrollTop += event.deltaY
+    }
+
+    element.addEventListener('wheel', handleWheel, { passive: false })
+
+    return () => {
+      element.removeEventListener('wheel', handleWheel)
+    }
+  }, [isOpen])
 
   function dismissBubble() {
     if (typeof window !== 'undefined') {
@@ -291,7 +344,10 @@ export default function GuideMascotLauncher() {
                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
                 className="absolute bottom-[5.5rem] right-0 flex h-[min(78vh,760px)] w-[380px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl"
               >
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-5">
+                <div
+                  ref={scrollContainerRef}
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-5"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-600">
