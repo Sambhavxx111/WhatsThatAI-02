@@ -16,19 +16,18 @@ function getMailConfig() {
   return { apiKey, from }
 }
 
+export function isEmailDeliveryConfigured() {
+  return Boolean(getMailConfig())
+}
+
 export async function sendTransactionalEmail(input: SendMailInput) {
   const mailConfig = getMailConfig()
 
   if (!mailConfig) {
     const fallbackMessage = `Mail delivery is not configured. Intended email to ${input.to}: ${input.subject}`
-
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Email delivery is not configured for production.')
-    }
-
     console.warn(fallbackMessage)
     console.warn(input.text)
-    return
+    return false
   }
 
   const response = await fetch('https://api.resend.com/emails', {
@@ -51,4 +50,6 @@ export async function sendTransactionalEmail(input: SendMailInput) {
     const errorText = await response.text()
     throw new Error(`Email delivery failed: ${errorText}`)
   }
+
+  return true
 }

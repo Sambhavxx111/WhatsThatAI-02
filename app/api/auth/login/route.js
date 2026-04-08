@@ -8,7 +8,9 @@ import {
   verifyPassword,
 } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
+import { logAdminActionForRequest } from '@/lib/admin-audit'
 import { logSecurityEvent } from '@/lib/securityLogger'
+import { isEmailDeliveryConfigured } from '@/lib/mail'
 import {
   createNumericCode,
   createOpaqueToken,
@@ -71,79 +73,107 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 })
     }
 
-    if (!user.emailVerifiedAt) {
-      const verificationToken = createOpaqueToken(32)
-      await createVerificationTokenRecord({
-        userId: user.id,
-        email: user.email,
-        type: 'email_verification',
-        rawToken: verificationToken,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      })
+    let effectiveUser = user
+    const emailDeliveryConfigured = isEmailDeliveryConfigured()
 
-      await sendEmailVerificationEmail({
-        email: user.email,
-        token: verificationToken,
-        name: user.name,
-      })
+    if (!effectiveUser.emailVerifiedAt && emailDeliveryConfigured) {
+      try {
+        const verificationToken = createOpaqueToken(32)
+        await createVerificationTokenRecord({
+          userId: effectiveUser.id,
+          email: effectiveUser.email,
+          type: 'email_verification',
+          rawToken: verificationToken,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        })
 
-      await logSecurityEvent({
-        userId: user.id,
-        event: 'LOGIN_FAILED',
-        req: request,
-        status: 403,
-        metadata: {
-          email: normalizedEmail,
-          reason: 'email_unverified',
-        },
-      })
+        await sendEmailVerificationEmail({
+          email: effectiveUser.email,
+          token: verificationToken,
+          name: effectiveUser.name,
+        })
 
-      return NextResponse.json(
-        { error: 'Please verify your email before logging in. We sent you a fresh verification link.' },
-        { status: 403 }
-      )
-    }
+        await logSecurityEvent({
+          userId: effectiveUser.id,
+          event: 'LOGIN_FAILED',
+          req: request,
+          status: 403,
+          metadata: {
+            email: normalizedEmail,
+            reason: 'email_unverified',
+          },
+        })
 
-    if (user.role === 'admin') {
-      const mfaCode = createNumericCode()
-      const challenge = await createVerificationTokenRecord({
-        userId: user.id,
-        email: user.email,
-        type: 'admin_mfa',
-        rawToken: mfaCode,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      })
-
-      await sendAdminMfaEmail({
-        email: user.email,
-        code: mfaCode,
-        name: user.name,
-      })
-
-      const response = NextResponse.json({
-        success: true,
-        requiresMfa: true,
-        message: 'Enter the verification code we sent to your admin email.',
-      })
-
-      return setPendingAdminMfaCookie(response, {
-        userId: user.id,
-        email: user.email,
-        challengeId: challenge.id,
+        return NextResponse.json(
+          { error: 'Please verify your email before logging in. We sent you a fresh verification link.' },
+          { status: 403 }
+        )
+      } catch (error) {
+        console.warn('Verification email unavailable, allowing login:', error)
+        effectiveUser = await db.user.update({
+          where: { id: effectiveUser.id },
+          data: { emailVerifiedAt: new Date() },
+        })
+      }
+    } else if (!effectiveUser.emailVerifiedAt) {
+      effectiveUser = await db.user.update({
+        where: { id: effectiveUser.id },
+        data: { emailVerifiedAt: new Date() },
       })
     }
 
-    const tokens = await issueSessionTokens(user, request)
+    if (effectiveUser.role === 'admin' && emailDeliveryConfigured) {
+      try {
+        const mfaCode = createNumericCode()
+        const challenge = await createVerificationTokenRecord({
+          userId: effectiveUser.id,
+          email: effectiveUser.email,
+          type: 'admin_mfa',
+          rawToken: mfaCode,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        })
+
+        await sendAdminMfaEmail({
+          email: effectiveUser.email,
+          code: mfaCode,
+          name: effectiveUser.name,
+        })
+
+        const response = NextResponse.json({
+          success: true,
+          requiresMfa: true,
+          message: 'Enter the verification code we sent to your admin email.',
+        })
+
+        return setPendingAdminMfaCookie(response, {
+          userId: effectiveUser.id,
+          email: effectiveUser.email,
+          challengeId: challenge.id,
+        })
+      } catch (error) {
+        console.warn('Admin MFA email unavailable, allowing direct admin login:', error)
+      }
+    }
+
+    if (effectiveUser.role === 'admin') {
+      await logAdminActionForRequest({
+        request,
+        adminId: effectiveUser.id,
+        action: 'admin_login',
+      })
+    }
+
+    const tokens = await issueSessionTokens(effectiveUser, request)
     await logSecurityEvent({
-      userId: user.id,
+      userId: effectiveUser.id,
       event: 'LOGIN_SUCCESS',
       req: request,
       status: 200,
       metadata: {
-        role: user.role,
+        role: effectiveUser.role,
       },
     })
-    const response = NextResponse.json({ success: true, user: sanitizeUser(user) })
+    const response = NextResponse.json({ success: true, user: sanitizeUser(effectiveUser) })
     return setAuthCookies(response, tokens)
   } catch (error) {
     console.error('Login error:', error)

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { hashPassword } from '@/lib/auth'
+import { hashPassword, issueSessionTokens, sanitizeUser, setAuthCookies } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
 import { logSecurityEvent, logUnauthorizedAccess } from '@/lib/securityLogger'
+import { isEmailDeliveryConfigured } from '@/lib/mail'
 import { createOpaqueToken, createVerificationTokenRecord, sendEmailVerificationEmail } from '@/lib/verification'
 
 function getReservedAdminEmailSet() {
@@ -63,31 +64,64 @@ export async function POST(request) {
     }
 
     const hashedPassword = await hashPassword(normalizedPassword)
-    const user = await db.user.create({
+    const emailDeliveryConfigured = isEmailDeliveryConfigured()
+    let user = await db.user.create({
       data: {
         name: trimmedName,
         email: normalizedEmail,
         password: hashedPassword,
         role: 'user',
-        emailVerifiedAt: null,
+        emailVerifiedAt: emailDeliveryConfigured ? null : new Date(),
       },
     })
 
-    const verificationToken = createOpaqueToken(32)
+    if (emailDeliveryConfigured) {
+      try {
+        const verificationToken = createOpaqueToken(32)
 
-    await createVerificationTokenRecord({
-      userId: user.id,
-      email: user.email,
-      type: 'email_verification',
-      rawToken: verificationToken,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    })
+        await createVerificationTokenRecord({
+          userId: user.id,
+          email: user.email,
+          type: 'email_verification',
+          rawToken: verificationToken,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        })
 
-    await sendEmailVerificationEmail({
-      email: user.email,
-      token: verificationToken,
-      name: user.name,
-    })
+        await sendEmailVerificationEmail({
+          email: user.email,
+          token: verificationToken,
+          name: user.name,
+        })
+
+        await logSecurityEvent({
+          userId: user.id,
+          event: 'SIGNUP_SUCCESS',
+          req: request,
+          status: 201,
+          metadata: {
+            role: user.role,
+            verificationRequired: true,
+          },
+        })
+
+        return NextResponse.json(
+          {
+            success: true,
+            verificationRequired: true,
+            message: 'Check your email to verify your account before logging in.',
+          },
+          { status: 201 }
+        )
+      } catch (error) {
+        console.warn('Verification email unavailable, auto-verifying signup:', error)
+        user = await db.user.update({
+          where: { id: user.id },
+          data: { emailVerifiedAt: new Date() },
+        })
+      }
+    }
+
+    const tokens = await issueSessionTokens(user, request)
 
     await logSecurityEvent({
       userId: user.id,
@@ -96,17 +130,12 @@ export async function POST(request) {
       status: 201,
       metadata: {
         role: user.role,
+        verificationRequired: false,
       },
     })
 
-    return NextResponse.json(
-      {
-        success: true,
-        verificationRequired: true,
-        message: 'Check your email to verify your account before logging in.',
-      },
-      { status: 201 }
-    )
+    const response = NextResponse.json({ success: true, user: sanitizeUser(user) }, { status: 201 })
+    return setAuthCookies(response, tokens)
   } catch (error) {
     console.error('Signup error:', error)
     return NextResponse.json({ error: 'Could not create account.' }, { status: 500 })
