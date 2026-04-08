@@ -12,7 +12,7 @@ export const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60
 
 type AuthRole = user_role | 'user' | 'admin'
 
-type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'createdAt'>
+type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'createdAt' | 'profileImageUrl'>
 
 type AuthTokenPayload = JwtPayload & {
   sub: string
@@ -189,6 +189,7 @@ export function sanitizeUser(user: AuthUser | null) {
     id: user.id,
     name: user.name,
     email: user.email,
+    profileImageUrl: user.profileImageUrl || null,
     role: user.role || 'user',
     createdAt: user.createdAt,
   }

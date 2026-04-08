@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import UserAvatar from '@/components/ui/UserAvatar'
 
 const navItems = [
   { href: '/tools', label: 'Tools' },
@@ -99,7 +100,16 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <span className="hidden text-[14px] font-medium text-slate-500 lg:block">Hi, {user.name || user.email}</span>
+              <Link href="/profile" className="flex items-center gap-3 rounded-full px-1 py-1 transition hover:bg-slate-100">
+                <UserAvatar
+                  src={user.profileImageUrl || ''}
+                  alt={`${user.name || user.email} profile picture`}
+                  size="sm"
+                />
+                <span className="hidden text-[14px] font-medium text-slate-500 lg:block">
+                  Hi, {user.name || user.email}
+                </span>
+              </Link>
               <button
                 type="button"
                 onClick={handleLogout}

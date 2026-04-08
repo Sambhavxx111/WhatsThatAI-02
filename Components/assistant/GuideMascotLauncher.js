@@ -163,10 +163,12 @@ export default function GuideMascotLauncher() {
     }
 
     window.addEventListener('focus', handleAuthRefresh)
+    window.addEventListener('auth-changed', handleAuthRefresh)
     window.addEventListener('auth-state-changed', handleAuthRefresh)
 
     return () => {
       window.removeEventListener('focus', handleAuthRefresh)
+      window.removeEventListener('auth-changed', handleAuthRefresh)
       window.removeEventListener('auth-state-changed', handleAuthRefresh)
     }
   }, [])
@@ -346,7 +348,8 @@ export default function GuideMascotLauncher() {
               >
                 <div
                   ref={scrollContainerRef}
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-5"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-5 touch-pan-y"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>

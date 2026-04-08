@@ -16,7 +16,7 @@ export default function AuthForm({ mode = 'login' }) {
   const [submitting, setSubmitting] = useState(false)
 
   const isSignup = mode === 'signup'
-  const nextPath = searchParams.get('next') || '/tools'
+  const nextPath = searchParams.get('redirect') || searchParams.get('next') || '/tools'
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -43,6 +43,7 @@ export default function AuthForm({ mode = 'login' }) {
       }
 
       window.dispatchEvent(new Event('auth-changed'))
+      window.dispatchEvent(new Event('auth-state-changed'))
       router.push(nextPath)
       router.refresh()
     } catch (authError) {

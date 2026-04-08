@@ -34,6 +34,7 @@ model User {
   name           String?         @db.VarChar(255)
   email          String          @unique @db.VarChar(255)
   password       String          @db.VarChar(255)
+  profileImageUrl String?        @map("profile_image_url") @db.Text
   role           user_role       @default(user)
   createdAt      DateTime?       @default(now()) @map("created_at") @db.Timestamp(0)
   reviews        Review[]
@@ -123,3 +124,4 @@ enum admin_audit_action {
   tool_rejection
   tool_deletion
 }
+
