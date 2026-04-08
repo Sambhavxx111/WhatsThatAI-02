@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 
 const sizeClasses = {
@@ -16,8 +17,14 @@ export default function UserAvatar({
   className = '',
 }) {
   const dimensionClass = sizeClasses[size] || sizeClasses.md
+  const normalizedSrc = useMemo(() => String(src || '').trim(), [src])
+  const [imageFailed, setImageFailed] = useState(false)
 
-  if (src) {
+  useEffect(() => {
+    setImageFailed(false)
+  }, [normalizedSrc])
+
+  if (normalizedSrc && !imageFailed) {
     return (
       <div
         className={clsx(
@@ -26,7 +33,12 @@ export default function UserAvatar({
           className
         )}
       >
-        <img src={src} alt={alt} className="h-full w-full object-cover" />
+        <img
+          src={normalizedSrc}
+          alt={alt}
+          className="h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
       </div>
     )
   }

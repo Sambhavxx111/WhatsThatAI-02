@@ -10,6 +10,7 @@ export default function ProfileAvatarManager() {
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [avatarRefreshKey, setAvatarRefreshKey] = useState(Date.now())
 
   async function loadUser() {
     try {
@@ -64,6 +65,7 @@ export default function ProfileAvatarManager() {
             }
           : current
       )
+      setAvatarRefreshKey(Date.now())
       setMessage('Profile picture updated.')
       window.dispatchEvent(new Event('auth-changed'))
       window.dispatchEvent(new Event('auth-state-changed'))
@@ -101,6 +103,7 @@ export default function ProfileAvatarManager() {
             }
           : current
       )
+      setAvatarRefreshKey(Date.now())
       setMessage('Profile picture removed.')
       window.dispatchEvent(new Event('auth-changed'))
       window.dispatchEvent(new Event('auth-state-changed'))
@@ -129,14 +132,19 @@ export default function ProfileAvatarManager() {
     )
   }
 
+  const avatarSrc = user?.profileImageUrl
+    ? `${user.profileImageUrl}${user.profileImageUrl.includes('?') ? '&' : '?'}v=${avatarRefreshKey}`
+    : ''
+
   return (
     <div className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <UserAvatar
-            src={user.profileImageUrl || ''}
+            src={avatarSrc}
             alt={`${user.name || user.email} profile picture`}
             size="xl"
+            className="shrink-0"
           />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-600">
