@@ -49,6 +49,7 @@ export async function POST(request) {
             id: true,
             name: true,
             email: true,
+            profileImageUrl: true,
           },
         },
       },
@@ -66,6 +67,7 @@ export async function POST(request) {
         user: {
           id: savedReview.user?.id,
           name: savedReview.user?.name,
+          profileImageUrl: savedReview.user?.profileImageUrl || null,
           isOfficial: isWhatsThatAIOfficialEmail(savedReview.user?.email),
         },
       },

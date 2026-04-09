@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import StarRating from '@/components/ui/StarRating'
+import UserAvatar from '@/components/ui/UserAvatar'
 
 function formatDate(value) {
   if (!value) return ''
@@ -206,14 +207,24 @@ export default function ReviewSection({ toolId, onStatsChange }) {
             reviews.map((item) => (
               <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                 <div className="mb-3 flex items-center justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-bold text-slate-900">{item.user?.name || 'Anonymous user'}</p>
-                      {item.user?.isOfficial ? <VerifiedBadge /> : null}
+                  <div className="flex items-center gap-3">
+                    <UserAvatar
+                      src={item.user?.profileImageUrl || ''}
+                      alt={`${item.user?.name || 'Anonymous user'} profile picture`}
+                      size="md"
+                      className="shrink-0"
+                    />
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold text-slate-900">{item.user?.name || 'Anonymous user'}</p>
+                        {item.user?.isOfficial ? <VerifiedBadge /> : null}
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium">{formatDate(item.createdAt)}</p>
                     </div>
-                    <p className="text-xs text-slate-500 font-medium">{formatDate(item.createdAt)}</p>
                   </div>
-                  <StarRating rating={item.rating} totalReviews={0} />
+                  <div className="shrink-0">
+                    <StarRating rating={item.rating} totalReviews={0} />
+                  </div>
                 </div>
                 <p className="text-sm leading-6 text-slate-700 font-medium">{item.review || 'No written review provided.'}</p>
               </div>
@@ -246,9 +257,13 @@ export default function ReviewSection({ toolId, onStatsChange }) {
                 value={review}
                 onChange={(event) => setReview(event.target.value)}
                 rows={6}
+                maxLength={600}
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 font-medium outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400"
                 placeholder="What stood out for you?"
               />
+              <p className="mt-2 text-xs font-medium text-slate-400">
+                {review.length}/600 characters
+              </p>
             </div>
 
             {message ? <p className="text-sm font-medium text-slate-600">{message}</p> : null}

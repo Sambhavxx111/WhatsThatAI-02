@@ -13,7 +13,7 @@ const sanitizedString = (min = 1, max = 500) =>
     .transform((value) => sanitizeText(value))
     .pipe(z.string().min(min).max(max))
 
-const optionalSanitizedString = (max = 300) =>
+const optionalSanitizedString = (max = 600) =>
   z
     .string()
     .transform((value) => sanitizeText(value))
@@ -31,7 +31,7 @@ export const toolSubmissionSchema = z.object({
 export const reviewSchema = z.object({
   toolId: z.coerce.number().int().positive(),
   rating: z.coerce.number().int().min(1).max(5),
-  comment: optionalSanitizedString(300).default(''),
+  comment: optionalSanitizedString(600).default(''),
 })
 
 export const reviewDeleteSchema = z.object({

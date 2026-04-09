@@ -23,6 +23,7 @@ export async function GET(request, { params }) {
               id: true,
               name: true,
               email: true,
+              profileImageUrl: true,
             },
           },
         },
@@ -41,6 +42,7 @@ export async function GET(request, { params }) {
         user: {
           id: review.user?.id,
           name: review.user?.name,
+          profileImageUrl: review.user?.profileImageUrl || null,
           isOfficial: isWhatsThatAIOfficialEmail(review.user?.email),
         },
         isOwner: user ? user.id === review.userId : false,
