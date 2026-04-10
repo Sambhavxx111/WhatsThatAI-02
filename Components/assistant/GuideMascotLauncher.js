@@ -184,17 +184,30 @@ export default function GuideMascotLauncher() {
       const canScroll = element.scrollHeight > element.clientHeight
 
       if (!canScroll) {
+        event.preventDefault()
+        event.stopPropagation()
         return
       }
 
+      const nextScrollTop = element.scrollTop + event.deltaY
+      const maxScrollTop = element.scrollHeight - element.clientHeight
+      const clampedScrollTop = Math.max(0, Math.min(maxScrollTop, nextScrollTop))
+
       event.preventDefault()
-      element.scrollTop += event.deltaY
+      event.stopPropagation()
+      element.scrollTop = clampedScrollTop
+    }
+
+    function handleTouchMove(event) {
+      event.stopPropagation()
     }
 
     element.addEventListener('wheel', handleWheel, { passive: false })
+    element.addEventListener('touchmove', handleTouchMove, { passive: false })
 
     return () => {
       element.removeEventListener('wheel', handleWheel)
+      element.removeEventListener('touchmove', handleTouchMove)
     }
   }, [isOpen])
 
@@ -345,6 +358,8 @@ export default function GuideMascotLauncher() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
                 className="absolute bottom-[5.5rem] right-0 flex h-[min(78vh,760px)] w-[380px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl"
+                onWheelCapture={(event) => event.stopPropagation()}
+                onTouchMoveCapture={(event) => event.stopPropagation()}
               >
                 <div
                   ref={scrollContainerRef}

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import { ENABLE_CURATED_COLLECTIONS } from '@/lib/feature-flags'
 
 export default function AdminDashboard() {
   const [tools, setTools] = useState([])
@@ -88,6 +89,14 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-col gap-3 sm:items-end">
+            {ENABLE_CURATED_COLLECTIONS ? (
+              <Link
+                href="/portal/admin/collections"
+                className="inline-flex h-11 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.04] px-5 text-[14px] font-semibold text-white transition hover:bg-white/[0.08]"
+              >
+                Manage collections
+              </Link>
+            ) : null}
             <Link
               href="/portal/admin/security"
               className="inline-flex h-11 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.04] px-5 text-[14px] font-semibold text-white transition hover:bg-white/[0.08]"

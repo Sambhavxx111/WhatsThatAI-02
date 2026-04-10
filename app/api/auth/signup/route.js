@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword, issueSessionTokens, sanitizeUser, setAuthCookies } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
+import { getUserOnboardingPreference } from '@/lib/onboarding'
 import { logSecurityEvent, logUnauthorizedAccess } from '@/lib/securityLogger'
 import { isEmailDeliveryConfigured } from '@/lib/mail'
 import { createOpaqueToken, createVerificationTokenRecord, sendEmailVerificationEmail } from '@/lib/verification'
@@ -121,6 +122,7 @@ export async function POST(request) {
       }
     }
 
+    const onboardingPreference = await getUserOnboardingPreference(user.id)
     const tokens = await issueSessionTokens(user, request)
 
     await logSecurityEvent({
@@ -134,7 +136,14 @@ export async function POST(request) {
       },
     })
 
-    const response = NextResponse.json({ success: true, user: sanitizeUser(user) }, { status: 201 })
+    const response = NextResponse.json(
+      {
+        success: true,
+        user: sanitizeUser(user),
+        onboardingRequired: !Boolean(onboardingPreference?.completedAt),
+      },
+      { status: 201 }
+    )
     return setAuthCookies(response, tokens)
   } catch (error) {
     console.error('Signup error:', error)

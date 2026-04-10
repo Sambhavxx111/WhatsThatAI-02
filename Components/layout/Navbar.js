@@ -8,7 +8,6 @@ import UserAvatar from '@/components/ui/UserAvatar'
 const navItems = [
   { href: '/tools', label: 'Tools' },
   { href: '/categories', label: 'Categories' },
-  { href: '/submit-tool', label: 'Submit Tool' },
 ]
 
 export default function Navbar() {
@@ -95,6 +94,9 @@ export default function Navbar() {
               My Collection
             </Link>
           ) : null}
+          <Link href="/submit-tool" className="text-[14px] font-semibold text-slate-500 transition-colors hover:text-slate-900">
+            Submit Tool
+          </Link>
         </div>
 
         <div className="flex items-center gap-4">

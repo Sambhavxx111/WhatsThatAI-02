@@ -61,6 +61,23 @@ export const assistantRecommendationSchema = z.object({
   goal: sanitizedString(6, 600),
 })
 
+export const onboardingPreferenceSchema = z.object({
+  categories: z.array(z.string()).min(1).max(5),
+})
+
+export const curatedCollectionSchema = z.object({
+  title: sanitizedString(3, 120),
+  slug: sanitizedString(3, 160)
+    .transform((value) => value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')),
+  description: optionalSanitizedString(600).default(''),
+  summary: optionalSanitizedString(600).default(''),
+  type: z.enum(['starter', 'trending', 'custom']),
+  active: z.coerce.boolean().default(true),
+  categories: z.array(z.string()).max(5).default([]),
+  toolIds: z.array(z.coerce.number().int().positive()).max(12).default([]),
+  notesByToolId: z.record(z.string(), z.string()).optional().default({}),
+})
+
 export function formatZodError(error: z.ZodError): string {
   return error.issues.map((issue) => issue.message).join(', ')
 }

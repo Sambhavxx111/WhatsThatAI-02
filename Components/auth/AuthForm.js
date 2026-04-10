@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, Eye, EyeOff, ShieldCheck, Sparkles } from 'lucide-react'
+import { ENABLE_INTEREST_ONBOARDING } from '@/lib/feature-flags'
 
 export default function AuthForm({ mode = 'login' }) {
   const router = useRouter()
@@ -21,6 +22,7 @@ export default function AuthForm({ mode = 'login' }) {
 
   const isSignup = mode === 'signup'
   const nextPath = searchParams.get('redirect') || searchParams.get('next') || '/tools'
+  const onboardingPath = `/onboarding?next=${encodeURIComponent(nextPath)}`
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -86,7 +88,7 @@ export default function AuthForm({ mode = 'login' }) {
 
       window.dispatchEvent(new Event('auth-changed'))
       window.dispatchEvent(new Event('auth-state-changed'))
-      router.push(nextPath)
+      router.push(ENABLE_INTEREST_ONBOARDING && data.onboardingRequired ? onboardingPath : nextPath)
       router.refresh()
     } catch (authError) {
       setError(authError.message)
@@ -250,3 +252,4 @@ export default function AuthForm({ mode = 'login' }) {
     </motion.form>
   )
 }
+

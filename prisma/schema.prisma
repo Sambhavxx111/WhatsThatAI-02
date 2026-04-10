@@ -25,26 +25,30 @@ model Tool {
   reviews     Review[]
   activity    UserActivity[]
   likes       UserLike[]
+  curatedCollectionTools CuratedCollectionTool[]
 
   @@map("tools")
 }
 
 model User {
-  id                 Int                 @id @default(autoincrement())
-  name               String?             @db.VarChar(255)
-  email              String              @unique @db.VarChar(255)
-  password           String              @db.VarChar(255)
-  profileImageUrl    String?             @map("profile_image_url") @db.Text
-  role               user_role           @default(user)
-  emailVerifiedAt    DateTime?           @map("email_verified_at") @db.Timestamp(0)
-  createdAt          DateTime?           @default(now()) @map("created_at") @db.Timestamp(0)
-  reviews            Review[]
-  activity           UserActivity[]
-  likes              UserLike[]
-  adminAuditLogs     AdminAuditLog[]
-  authSessions       AuthSession[]
-  securityLogs       SecurityLog[]
-  verificationTokens VerificationToken[]
+  id                        Int                        @id @default(autoincrement())
+  name                      String?                    @db.VarChar(255)
+  email                     String                     @unique @db.VarChar(255)
+  password                  String                     @db.VarChar(255)
+  profileImageUrl           String?                    @map("profile_image_url") @db.Text
+  role                      user_role                  @default(user)
+  emailVerifiedAt           DateTime?                  @map("email_verified_at") @db.Timestamp(0)
+  createdAt                 DateTime?                  @default(now()) @map("created_at") @db.Timestamp(0)
+  reviews                   Review[]
+  activity                  UserActivity[]
+  likes                     UserLike[]
+  adminAuditLogs            AdminAuditLog[]
+  authSessions              AuthSession[]
+  securityLogs              SecurityLog[]
+  verificationTokens        VerificationToken[]
+  onboardingPreference      UserOnboardingPreference?
+  createdCuratedCollections CuratedCollection[]       @relation("CuratedCollectionCreatedBy")
+  updatedCuratedCollections CuratedCollection[]       @relation("CuratedCollectionUpdatedBy")
 
   @@map("users")
 }
@@ -160,6 +164,55 @@ model SecurityLog {
   @@index([ip], map: "security_logs_ip_idx")
   @@map("security_logs")
 }
+
+model UserOnboardingPreference {
+  userId      Int      @id @map("user_id")
+  categories  Json
+  completedAt DateTime @map("completed_at") @db.Timestamp(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(0)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_onboarding_preferences_user")
+
+  @@map("user_onboarding_preferences")
+}
+
+model CuratedCollection {
+  id               Int                     @id @default(autoincrement())
+  slug             String                  @unique(map: "curated_collections_slug_key") @db.VarChar(191)
+  title            String                  @db.VarChar(255)
+  description      String?                 @db.Text
+  type             curated_collection_type
+  categories       Json?
+  summary          String?                 @db.Text
+  active           Boolean                 @default(true) @db.TinyInt
+  createdByAdminId Int?                    @map("created_by_admin_id")
+  updatedByAdminId Int?                    @map("updated_by_admin_id")
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt        DateTime                @updatedAt @map("updated_at") @db.Timestamp(0)
+  items            CuratedCollectionTool[]
+  createdByAdmin   User?                   @relation("CuratedCollectionCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull, map: "fk_curated_collections_created_by")
+  updatedByAdmin   User?                   @relation("CuratedCollectionUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull, map: "fk_curated_collections_updated_by")
+
+  @@index([type], map: "curated_collections_type_idx")
+  @@index([active], map: "curated_collections_active_idx")
+  @@map("curated_collections")
+}
+
+model CuratedCollectionTool {
+  id           Int               @id @default(autoincrement())
+  collectionId Int               @map("collection_id")
+  toolId       Int               @map("tool_id")
+  sortOrder    Int               @default(0) @map("sort_order")
+  note         String?           @db.VarChar(255)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamp(0)
+  collection   CuratedCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade, map: "fk_curated_collection_tools_collection")
+  tool         Tool              @relation(fields: [toolId], references: [id], onDelete: Cascade, map: "fk_curated_collection_tools_tool")
+
+  @@unique([collectionId, toolId], map: "curated_collection_tool_unique")
+  @@index([collectionId, sortOrder], map: "curated_collection_tools_collection_sort_idx")
+  @@index([toolId], map: "curated_collection_tools_tool_idx")
+  @@map("curated_collection_tools")
+}
 enum tools_pricing {
   free
   freemium
@@ -188,4 +241,13 @@ enum verification_token_type {
   email_verification
   admin_mfa
 }
+
+
+
+enum curated_collection_type {
+  starter
+  trending
+  custom
+}
+
 

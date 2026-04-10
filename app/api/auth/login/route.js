@@ -9,6 +9,7 @@ import {
 } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
 import { logAdminActionForRequest } from '@/lib/admin-audit'
+import { getUserOnboardingPreference } from '@/lib/onboarding'
 import { logSecurityEvent } from '@/lib/securityLogger'
 import { isEmailDeliveryConfigured } from '@/lib/mail'
 import {
@@ -163,6 +164,7 @@ export async function POST(request) {
       })
     }
 
+    const onboardingPreference = await getUserOnboardingPreference(effectiveUser.id)
     const tokens = await issueSessionTokens(effectiveUser, request)
     await logSecurityEvent({
       userId: effectiveUser.id,
@@ -173,7 +175,11 @@ export async function POST(request) {
         role: effectiveUser.role,
       },
     })
-    const response = NextResponse.json({ success: true, user: sanitizeUser(effectiveUser) })
+    const response = NextResponse.json({
+      success: true,
+      user: sanitizeUser(effectiveUser),
+      onboardingRequired: !Boolean(onboardingPreference?.completedAt),
+    })
     return setAuthCookies(response, tokens)
   } catch (error) {
     console.error('Login error:', error)
