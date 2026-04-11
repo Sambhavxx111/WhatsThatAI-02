@@ -16,7 +16,7 @@ const quickPrompts = [
   'Suggest tools for coding and debugging',
 ]
 
-const hiddenPathPrefixes = ['/portal', '/admin']
+const hiddenPathPrefixes = ['/portal', '/admin', '/submit-tool']
 
 function MascotCharacter() {
   return (
@@ -36,9 +36,11 @@ export default function GuideMascotLauncher() {
   const router = useRouter()
   const pathname = usePathname()
   const scrollContainerRef = useRef(null)
+  const footerRef = useRef(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
   const [showBubble, setShowBubble] = useState(true)
+  const [isNearFooter, setIsNearFooter] = useState(false)
   const [goal, setGoal] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [recommendedTools, setRecommendedTools] = useState([])
@@ -174,6 +176,30 @@ export default function GuideMascotLauncher() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const footer = document.querySelector('footer')
+    if (!footer) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsNearFooter(entry.isIntersecting)
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1,
+      }
+    )
+
+    observer.observe(footer)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
     const element = scrollContainerRef.current
 
     if (!element || !isOpen) {
@@ -302,7 +328,7 @@ export default function GuideMascotLauncher() {
     }
   }
 
-  if (!isVisible || shouldHideOnRoute) {
+  if (!isVisible || shouldHideOnRoute || isNearFooter) {
     return null
   }
 

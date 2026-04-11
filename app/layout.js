@@ -4,6 +4,7 @@ import SessionHeartbeat from '@/components/auth/SessionHeartbeat'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import SmoothScroll from '@/components/layout/SmoothScroll'
+import GuideMascotLauncher from '@/components/assistant/GuideMascotLauncher'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
       <body className="bg-[#FAFAFA] font-sans text-slate-900 antialiased overflow-x-hidden selection:bg-slate-200">
         <SmoothScroll />
         <SessionHeartbeat />
+        <GuideMascotLauncher />
         <div className="relative min-h-screen">
           <div className="pointer-events-none fixed inset-0 -z-10 opacity-90" />
           <Navbar />
