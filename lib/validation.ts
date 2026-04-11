@@ -59,6 +59,22 @@ export const instagramUrlSchema = z.object({
 
 export const assistantRecommendationSchema = z.object({
   goal: sanitizedString(6, 600),
+  category: z.enum([
+    'all',
+    'ai tools',
+    'writing',
+    'coding',
+    'video',
+    'image',
+    'audio',
+    'automation',
+    'marketing',
+    'research',
+    'productivity',
+    'career',
+  ]).default('all'),
+  pricing: z.enum(['all', 'free', 'freemium', 'paid']).default('all'),
+  limit: z.coerce.number().int().min(1).max(6).default(4),
 })
 
 export const onboardingPreferenceSchema = z.object({

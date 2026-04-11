@@ -24,11 +24,21 @@ export async function GET(request) {
 
     const preference = await getUserOnboardingPreference(user.id)
     const categories = Array.isArray(preference?.categories) ? preference.categories : []
+    const [suggestedTools, starterCollections, trendingCollections] = categories.length
+      ? await Promise.all([
+          getMatchingToolsForCategories(categories, 8),
+          getCuratedCollectionsForCategories(categories, { type: 'starter', limit: 3 }),
+          getCuratedCollectionsForCategories(categories, { type: 'trending', limit: 3 }),
+        ])
+      : [[], [], []]
 
     return NextResponse.json({
       categories: ONBOARDING_CATEGORIES,
       selectedCategories: categories,
       onboardingCompleted: Boolean(preference?.completedAt),
+      suggestedTools,
+      starterCollections,
+      trendingCollections,
     })
   } catch (error) {
     console.error('Onboarding preference fetch error:', error)

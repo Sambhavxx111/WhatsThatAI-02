@@ -1,7 +1,6 @@
 import { Inter, Manrope } from 'next/font/google'
 import './globals.css'
 import SessionHeartbeat from '@/components/auth/SessionHeartbeat'
-import GuideMascotLauncher from '@/components/assistant/GuideMascotLauncher'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import SmoothScroll from '@/components/layout/SmoothScroll'
@@ -33,7 +32,6 @@ export default function RootLayout({ children }) {
           <div className="pointer-events-none fixed inset-0 -z-10 opacity-90" />
           <Navbar />
           <main>{children}</main>
-          <GuideMascotLauncher />
           <Footer />
         </div>
       </body>

@@ -7,7 +7,10 @@ import { useEffect, useMemo, useState } from 'react'
 
 function CollectionCard({ collection }) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+    <Link
+      href={`/collections/${collection.slug}`}
+      className="block rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-600">
@@ -23,17 +26,16 @@ function CollectionCard({ collection }) {
       {collection.items?.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {collection.items.slice(0, 4).map((item) => (
-            <Link
+            <span
               key={item.id}
-              href={`/tools/${item.tool.slug}`}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
             >
               {item.tool.name}
-            </Link>
+            </span>
           ))}
         </div>
       ) : null}
-    </div>
+    </Link>
   )
 }
 
@@ -68,6 +70,8 @@ export default function OnboardingPage() {
   const [suggestedTools, setSuggestedTools] = useState([])
   const [starterCollections, setStarterCollections] = useState([])
   const [trendingCollections, setTrendingCollections] = useState([])
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false)
+  const [showInterestPicker, setShowInterestPicker] = useState(true)
 
   useEffect(() => {
     if (!ENABLE_INTEREST_ONBOARDING) {
@@ -96,6 +100,11 @@ export default function OnboardingPage() {
         setSelectedCategories(
           Array.isArray(onboardingData.selectedCategories) ? onboardingData.selectedCategories : []
         )
+        setSuggestedTools(Array.isArray(onboardingData.suggestedTools) ? onboardingData.suggestedTools : [])
+        setStarterCollections(Array.isArray(onboardingData.starterCollections) ? onboardingData.starterCollections : [])
+        setTrendingCollections(Array.isArray(onboardingData.trendingCollections) ? onboardingData.trendingCollections : [])
+        setOnboardingCompleted(Boolean(onboardingData.onboardingCompleted))
+        setShowInterestPicker(!Boolean(onboardingData.onboardingCompleted))
       } catch {
         if (!mounted) return
         setError('Could not load onboarding preferences right now.')
@@ -161,6 +170,8 @@ export default function OnboardingPage() {
       setSuggestedTools(Array.isArray(data.suggestedTools) ? data.suggestedTools : [])
       setStarterCollections(Array.isArray(data.starterCollections) ? data.starterCollections : [])
       setTrendingCollections(Array.isArray(data.trendingCollections) ? data.trendingCollections : [])
+      setOnboardingCompleted(true)
+      setShowInterestPicker(false)
       setMessage('Great choice. We saved your preferences and prepared some recommendations.')
     } catch (saveError) {
       setError(saveError.message)
@@ -198,80 +209,105 @@ export default function OnboardingPage() {
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-600">Personalize your discovery</p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-            Pick the AI categories you care about.
+            {showInterestPicker ? 'Pick the AI categories you care about.' : 'Your tailored starting point is ready.'}
           </h1>
           <p className="mt-5 text-[17px] leading-8 text-slate-500">
-            Choose up to 5 interests and we'll shape your first set of tool recommendations and ready-made collections around them.
+            {showInterestPicker
+              ? "Choose up to 5 interests and we'll shape your first set of tool recommendations and ready-made collections around them."
+              : 'We saved your interests and turned them into curated stacks you can open right away.'}
           </p>
         </div>
 
-        <div className="mx-auto mt-10 max-w-4xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
-          {loading ? (
-            <p className="text-sm font-medium text-slate-500">Loading your onboarding flow...</p>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <div className="flex flex-wrap gap-3">
-                {availableCategories.map((category) => {
-                  const active = selectedCategories.includes(category.id)
-                  return (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => toggleCategory(category.id)}
-                      className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                        active
-                          ? 'border-slate-900 bg-slate-900 text-white'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:text-slate-900'
-                      }`}
-                    >
-                      {category.label}
-                    </button>
-                  )
-                })}
-              </div>
+        {showInterestPicker ? (
+          <div className="mx-auto mt-10 max-w-4xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+            {loading ? (
+              <p className="text-sm font-medium text-slate-500">Loading your onboarding flow...</p>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <div className="flex flex-wrap gap-3">
+                  {availableCategories.map((category) => {
+                    const active = selectedCategories.includes(category.id)
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => toggleCategory(category.id)}
+                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                          active
+                            ? 'border-slate-900 bg-slate-900 text-white'
+                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                        }`}
+                      >
+                        {category.label}
+                      </button>
+                    )
+                  })}
+                </div>
 
-              <p className="mt-4 text-sm font-medium text-slate-400">
-                {selectedCategories.length}/5 selected
-              </p>
-
-              {message ? (
-                <p className="mt-5 rounded-[14px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                  {message}
+                <p className="mt-4 text-sm font-medium text-slate-400">
+                  {selectedCategories.length}/5 selected
                 </p>
-              ) : null}
 
-              {error ? (
-                <p className="mt-5 rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-                  {error}
+                {message ? (
+                  <p className="mt-5 rounded-[14px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                    {message}
+                  </p>
+                ) : null}
+
+                {error ? (
+                  <p className="mt-5 rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                    {error}
+                  </p>
+                ) : null}
+
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex h-[48px] items-center justify-center rounded-[18px] bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? 'Saving...' : 'Save preferences'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    disabled={saving}
+                    className="inline-flex h-[48px] items-center justify-center rounded-[18px] border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Skip for now
+                  </button>
+                  <Link
+                    href={nextPath}
+                    className="inline-flex h-[48px] items-center justify-center rounded-[18px] border border-transparent px-3 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
+                  >
+                    Continue later
+                  </Link>
+                </div>
+              </form>
+            )}
+          </div>
+        ) : onboardingCompleted ? (
+          <div className="mx-auto mt-10 max-w-4xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-emerald-700">
+                  Your interests are saved. Open a stack below or keep exploring the marketplace.
                 </p>
-              ) : null}
-
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="inline-flex h-[48px] items-center justify-center rounded-[18px] bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saving ? 'Saving...' : 'Save preferences'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSkip}
-                  disabled={saving}
-                  className="inline-flex h-[48px] items-center justify-center rounded-[18px] border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Skip for now
-                </button>
-                <Link
-                  href={nextPath}
-                  className="inline-flex h-[48px] items-center justify-center rounded-[18px] border border-transparent px-3 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
-                >
-                  Continue later
-                </Link>
               </div>
-            </form>
-          )}
-        </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInterestPicker(true)
+                  setMessage('')
+                  setError('')
+                }}
+                className="inline-flex h-[42px] items-center justify-center rounded-[16px] border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Edit interests
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {(suggestedTools.length || starterCollections.length || trendingCollections.length) ? (
           <div className="mt-12 space-y-10">
