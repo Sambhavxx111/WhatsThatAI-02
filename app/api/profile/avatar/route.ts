@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
-import { removeProfileImage, saveProfileImage } from '@/lib/avatar-storage'
+import { removeProfileImage, saveProfileImageForUser } from '@/lib/avatar-storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No profile picture provided.' }, { status: 400 })
     }
 
-    const savedAvatar = await saveProfileImage(uploaded)
+    const savedAvatar = await saveProfileImageForUser(user.id, uploaded)
     const existingUser = await db.user.findUnique({
       where: {
         id: user.id,
@@ -60,7 +60,10 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (existingUser?.profileImageUrl) {
+    if (
+      existingUser?.profileImageUrl &&
+      existingUser.profileImageUrl !== savedAvatar.publicUrl
+    ) {
       await removeProfileImage(existingUser.profileImageUrl)
     }
 

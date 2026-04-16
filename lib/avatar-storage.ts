@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { db } from '@/lib/db'
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024
 const AVATAR_DIR = path.join(process.cwd(), 'public', 'uploads', 'profile-pictures')
@@ -68,19 +69,64 @@ export function validateAvatarFile(file: AvatarUploadFile) {
 export async function saveProfileImage(file: AvatarUploadFile) {
   const { extension, mimeType, size } = validateAvatarFile(file)
   const fileName = `${randomUUID()}${extension}`
-  const filePath = path.join(AVATAR_DIR, fileName)
   const bytes = Buffer.from(await file.arrayBuffer())
-
-  await fs.mkdir(AVATAR_DIR, { recursive: true })
-  await fs.writeFile(filePath, bytes)
 
   return {
     fileName,
-    filePath,
     publicUrl: `${AVATAR_URL_PREFIX}${fileName}`,
     mimeType,
     size,
+    bytes,
   }
+}
+
+export async function saveProfileImageForUser(
+  userId: number,
+  file: AvatarUploadFile
+) {
+  const savedAvatar = await saveProfileImage(file)
+
+  await db.userProfileImage.upsert({
+    where: {
+      userId,
+    },
+    update: {
+      fileName: savedAvatar.fileName,
+      mimeType: savedAvatar.mimeType,
+      size: savedAvatar.size,
+      data: savedAvatar.bytes,
+    },
+    create: {
+      userId,
+      fileName: savedAvatar.fileName,
+      mimeType: savedAvatar.mimeType,
+      size: savedAvatar.size,
+      data: savedAvatar.bytes,
+    },
+  })
+
+  return {
+    ...savedAvatar,
+    publicUrl: `${AVATAR_URL_PREFIX}${userId}`,
+  }
+}
+
+export async function getStoredProfileImage(userId: number) {
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return null
+  }
+
+  return db.userProfileImage.findUnique({
+    where: {
+      userId,
+    },
+    select: {
+      fileName: true,
+      mimeType: true,
+      size: true,
+      data: true,
+    },
+  })
 }
 
 export async function removeProfileImage(publicUrl: string | null | undefined) {
@@ -91,6 +137,18 @@ export async function removeProfileImage(publicUrl: string | null | undefined) {
   }
 
   const urlWithoutQuery = normalized.split('?')[0]
+  const numericIdentifier = urlWithoutQuery.replace(AVATAR_URL_PREFIX, '').trim()
+
+  if (/^\d+$/.test(numericIdentifier)) {
+    await db.userProfileImage.deleteMany({
+      where: {
+        userId: Number(numericIdentifier),
+      },
+    })
+
+    return
+  }
+
   const isManagedAvatar =
     urlWithoutQuery.startsWith(AVATAR_URL_PREFIX) ||
     urlWithoutQuery.startsWith('/uploads/profile-pictures/')

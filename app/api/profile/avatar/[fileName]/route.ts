@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
-import { getAvatarContentType, getAvatarFilePath } from '@/lib/avatar-storage'
+import { getAvatarContentType, getAvatarFilePath, getStoredProfileImage } from '@/lib/avatar-storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +15,21 @@ export async function GET(
 
     if (!safeFileName || safeFileName !== rawFileName) {
       return NextResponse.json({ error: 'Invalid avatar file.' }, { status: 400 })
+    }
+
+    if (/^\d+$/.test(safeFileName)) {
+      const storedAvatar = await getStoredProfileImage(Number(safeFileName))
+
+      if (storedAvatar?.data) {
+        return new NextResponse(Buffer.from(storedAvatar.data), {
+          status: 200,
+          headers: {
+            'Content-Type': storedAvatar.mimeType || getAvatarContentType(storedAvatar.fileName),
+            'Content-Length': String(storedAvatar.size || Buffer.byteLength(storedAvatar.data)),
+            'Cache-Control': 'private, max-age=60',
+          },
+        })
+      }
     }
 
     const filePath = getAvatarFilePath(safeFileName)

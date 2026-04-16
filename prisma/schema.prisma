@@ -36,6 +36,7 @@ model User {
   email                     String                     @unique @db.VarChar(255)
   password                  String                     @db.VarChar(255)
   profileImageUrl           String?                    @map("profile_image_url") @db.Text
+  profileImage              UserProfileImage?
   role                      user_role                  @default(user)
   emailVerifiedAt           DateTime?                  @map("email_verified_at") @db.Timestamp(0)
   createdAt                 DateTime?                  @default(now()) @map("created_at") @db.Timestamp(0)
@@ -51,6 +52,20 @@ model User {
   updatedCuratedCollections CuratedCollection[]       @relation("CuratedCollectionUpdatedBy")
 
   @@map("users")
+}
+
+model UserProfileImage {
+  id        Int      @id @default(autoincrement())
+  userId     Int     @unique(map: "user_profile_images_user_id_key") @map("user_id")
+  fileName   String  @map("file_name") @db.VarChar(255)
+  mimeType   String  @map("mime_type") @db.VarChar(100)
+  size       Int
+  data       Bytes   @db.LongBlob
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamp(0)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_user_profile_images_user")
+
+  @@map("user_profile_images")
 }
 
 model Review {
