@@ -7,8 +7,9 @@ const initialForm = {
   name: '',
   description: '',
   category: '',
+  tags: '',
   pricing: '',
-  website_url: '',
+  url: '',
 }
 
 const categoryOptions = [
@@ -56,7 +57,7 @@ export default function SubmitTool() {
   }, [])
 
   const descriptionLength = form.description.trim().length
-  const websiteLooksValid = isValidUrl(form.website_url)
+  const websiteLooksValid = isValidUrl(form.url)
   const nameLooksValid = form.name.trim().length >= 3
   const readyToSubmit =
     humanCheck &&
@@ -279,18 +280,35 @@ export default function SubmitTool() {
 
             <div>
               <label className="mb-2.5 block text-[13px] font-semibold uppercase tracking-[0.1em] text-neutral-500">
+                Tags
+              </label>
+              <input
+                type="text"
+                name="tags"
+                value={form.tags}
+                onChange={handleChange}
+                className="w-full rounded-[16px] border border-white/10 bg-[#141414] px-4 py-3.5 text-[15px] font-medium text-white outline-none transition focus:border-white/20 focus:bg-[#1a1a1a]"
+                placeholder="e.g. Writing, Coding, Research"
+              />
+              <p className="mt-3 text-[13px] font-medium text-neutral-500">
+                Add a few specific tags separated by commas so the tool is easier to discover.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-2.5 block text-[13px] font-semibold uppercase tracking-[0.1em] text-neutral-500">
                 Website URL
               </label>
               <input
                 type="url"
-                name="website_url"
-                value={form.website_url}
+                name="url"
+                value={form.url}
                 onChange={handleChange}
                 required
                 className="w-full rounded-[16px] border border-white/10 bg-[#141414] px-4 py-3.5 text-[15px] font-medium text-white outline-none transition focus:border-white/20 focus:bg-[#1a1a1a]"
                 placeholder="https://official-tool-site.com"
               />
-              <p className={`mt-3 text-[13px] font-medium ${websiteLooksValid || !form.website_url ? 'text-neutral-500' : 'text-rose-400'}`}>
+              <p className={`mt-3 text-[13px] font-medium ${websiteLooksValid || !form.url ? 'text-neutral-500' : 'text-rose-400'}`}>
                 Use the official product URL so the listing can be verified quickly.
               </p>
             </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { syncToolTags } from '@/lib/tool-tags'
 import {
   evaluateToolForInsertion,
   findExistingTool,
@@ -7,6 +8,10 @@ import {
   normalizeTool,
   slugify,
 } from '@/lib/tool-ingestion'
+
+function normalizeToolPricing(pricing) {
+  return pricing === 'enterprise' ? 'paid' : pricing
+}
 
 export async function POST(request) {
   try {
@@ -47,6 +52,7 @@ export async function POST(request) {
 
     for (const normalizedName of uniqueNames) {
       const tool = incomingNameMap.get(normalizedName)
+      tool.pricing = normalizeToolPricing(tool.pricing)
       const slug = slugify(tool.name)
 
       if (!slug) {
@@ -67,7 +73,7 @@ export async function POST(request) {
 
       const evaluation = await evaluateToolForInsertion(tool)
 
-      await db.tool.create({
+      const createdTool = await db.tool.create({
         data: {
           name: tool.name,
           slug,
@@ -80,6 +86,8 @@ export async function POST(request) {
           active: evaluation.active,
         },
       })
+
+      await syncToolTags(db, createdTool.id, tool.tags, tool.category)
 
       inserted += 1
     }

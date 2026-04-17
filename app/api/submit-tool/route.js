@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
 import { assertPublicWebsiteUrl } from '@/lib/security'
+import { syncToolTags } from '@/lib/tool-tags'
 import { formatZodError, toolSubmissionSchema } from '@/lib/validation'
 import {
   evaluateToolForInsertion,
@@ -9,6 +10,10 @@ import {
   normalizeName,
   slugify,
 } from '@/lib/tool-ingestion'
+
+function normalizeToolPricing(pricing) {
+  return pricing === 'enterprise' ? 'paid' : pricing
+}
 
 export async function POST(request) {
   try {
@@ -33,7 +38,8 @@ export async function POST(request) {
       name: parsed.data.name,
       description: parsed.data.description,
       category: parsed.data.category,
-      pricing: parsed.data.pricing || 'freemium',
+      tags: parsed.data.tags || [],
+      pricing: normalizeToolPricing(parsed.data.pricing || 'freemium'),
       websiteUrl: parsed.data.url,
     }
 
@@ -58,18 +64,22 @@ export async function POST(request) {
 
     const evaluation = await evaluateToolForInsertion(tool)
 
-    await db.tool.create({
-      data: {
-        name: tool.name,
-        slug,
-        description: evaluation.description,
-        category: tool.category,
-        pricing: tool.pricing,
-        websiteUrl: tool.websiteUrl,
-        status: evaluation.status,
-        source: 'user',
-        active: evaluation.active,
-      },
+    await db.$transaction(async (transaction) => {
+      const createdTool = await transaction.tool.create({
+        data: {
+          name: tool.name,
+          slug,
+          description: evaluation.description,
+          category: tool.category,
+          pricing: tool.pricing,
+          websiteUrl: tool.websiteUrl,
+          status: evaluation.status,
+          source: 'user',
+          active: evaluation.active,
+        },
+      })
+
+      await syncToolTags(transaction, createdTool.id, tool.tags, tool.category)
     })
 
     return NextResponse.json({

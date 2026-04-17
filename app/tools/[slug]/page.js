@@ -158,6 +158,7 @@ export default function ToolPage() {
   const logoSource = getLogoSource(tool)
   const showLogo = Boolean(logoSource) && !logoFailed
   const showOriginalBadge = isWhatsThatAIOriginal(tool)
+  const visibleTags = Array.isArray(tool.tags) ? tool.tags : []
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] px-4 pb-20 pt-32 sm:px-6 lg:px-8">
@@ -207,6 +208,14 @@ export default function ToolPage() {
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-semibold text-slate-600">
                     {tool.category}
                   </span>
+                  {visibleTags.map((tag) => (
+                    <span
+                      key={`${tool.id}-${tag}`}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] font-medium text-slate-500"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                   <StarRating rating={tool.avgRating} totalReviews={tool.totalReviews} size="lg" />
                 </div>
               </div>

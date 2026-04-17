@@ -22,6 +22,7 @@ type ToolCandidate = {
   slug: string
   description: string
   category: string
+  tags: string[]
   pricing: string
   source: string
   avgRating: number | null
@@ -291,6 +292,7 @@ function scoreTool(tool: ToolCandidate, plan: GeminiPlan): number {
   const haystack = [
     tool.name,
     tool.category,
+    ...(Array.isArray(tool.tags) ? tool.tags : []),
     tool.description,
     tool.pricing,
     tool.source,
@@ -303,12 +305,14 @@ function scoreTool(tool: ToolCandidate, plan: GeminiPlan): number {
   for (const term of plan.searchTerms) {
     if (tool.name.toLowerCase().includes(term)) score += 7
     if (tool.category.toLowerCase().includes(term)) score += 5
+    if ((tool.tags || []).some((item) => item.toLowerCase().includes(term))) score += 5
     if (tool.description.toLowerCase().includes(term)) score += 3
     if (haystack.includes(term)) score += 1
   }
 
   for (const category of plan.categories) {
     if (tool.category.toLowerCase().includes(category)) score += 6
+    if ((tool.tags || []).some((item) => item.toLowerCase().includes(category))) score += 6
     if (tool.description.toLowerCase().includes(category)) score += 2
   }
 
@@ -340,9 +344,10 @@ function buildReason(tool: ToolCandidate, plan: GeminiPlan): string {
   const reasons: string[] = []
   const description = tool.description.toLowerCase()
   const category = tool.category.toLowerCase()
+  const tags = (tool.tags || []).join(' ').toLowerCase()
 
   const matchedCategory = plan.categories.find(
-    (item) => category.includes(item) || description.includes(item)
+    (item) => category.includes(item) || description.includes(item) || tags.includes(item)
   )
   const matchedCapability = plan.recommendedCapabilities.find(
     (item) => description.includes(item) || tool.name.toLowerCase().includes(item)
@@ -394,11 +399,29 @@ export async function POST(request: NextRequest) {
       { name: { contains: term } },
       { category: { contains: term } },
       { description: { contains: term } },
+      {
+        tagLinks: {
+          some: {
+            tag: {
+              name: { contains: term },
+            },
+          },
+        },
+      },
     ])
 
     const categoryClauses = plan.categories.flatMap((term) => [
       { category: { contains: term } },
       { description: { contains: term } },
+      {
+        tagLinks: {
+          some: {
+            tag: {
+              name: { contains: term },
+            },
+          },
+        },
+      },
     ])
 
     const pricingFilter =
@@ -419,6 +442,13 @@ export async function POST(request: NextRequest) {
             }
           : {}),
       },
+      include: {
+        tagLinks: {
+          include: {
+            tag: true,
+          },
+        },
+      },
       orderBy: [{ createdAt: 'desc' }, { name: 'asc' }],
       take: 40,
     })
@@ -430,6 +460,13 @@ export async function POST(request: NextRequest) {
             where: {
               status: 'approved',
               active: true,
+            },
+            include: {
+              tagLinks: {
+                include: {
+                  tag: true,
+                },
+              },
             },
             orderBy: [{ createdAt: 'desc' }, { name: 'asc' }],
             take: 40,

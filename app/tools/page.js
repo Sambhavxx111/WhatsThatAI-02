@@ -19,8 +19,10 @@ const ORIGINALS_BANNER_DISMISS_MS = 24 * 60 * 60 * 1000
 
 function ToolsPageContent() {
   const [tools, setTools] = useState([])
+  const [availableTags, setAvailableTags] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [pricingFilter, setPricingFilter] = useState('all')
+  const [tagFilter, setTagFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('')
   const [showOriginalsBanner, setShowOriginalsBanner] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -34,13 +36,40 @@ function ToolsPageContent() {
 
   const currentQuery = useMemo(() => searchParams.get('q') || '', [searchParams])
   const currentPricing = useMemo(() => searchParams.get('pricing') || 'all', [searchParams])
+  const currentTag = useMemo(() => searchParams.get('tag') || 'all', [searchParams])
   const currentSource = useMemo(() => searchParams.get('source') || '', [searchParams])
 
   useEffect(() => {
     setSearchQuery(currentQuery)
     setPricingFilter(currentPricing)
+    setTagFilter(currentTag)
     setSourceFilter(currentSource)
-  }, [currentPricing, currentQuery, currentSource])
+  }, [currentPricing, currentQuery, currentSource, currentTag])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadTags() {
+      try {
+        const response = await fetch('/api/tags?limit=18', { cache: 'no-store' })
+        const data = await response.json()
+
+        if (!cancelled) {
+          setAvailableTags(Array.isArray(data) ? data : [])
+        }
+      } catch {
+        if (!cancelled) {
+          setAvailableTags([])
+        }
+      }
+    }
+
+    void loadTags()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -77,6 +106,10 @@ function ToolsPageContent() {
           params.set('pricing', currentPricing)
         }
 
+        if (currentTag !== 'all') {
+          params.set('tag', currentTag)
+        }
+
         if (currentSource.trim()) {
           params.set('source', currentSource.trim())
         }
@@ -111,7 +144,7 @@ function ToolsPageContent() {
     return () => {
       isCancelled = true
     }
-  }, [currentPricing, currentQuery, currentSource])
+  }, [currentPricing, currentQuery, currentSource, currentTag])
 
   useEffect(() => {
     const target = loadMoreRef.current
@@ -138,9 +171,9 @@ function ToolsPageContent() {
     return () => {
       observer.disconnect()
     }
-  }, [hasMore, isLoading, isLoadingMore, tools.length, currentPricing, currentQuery, currentSource])
+  }, [hasMore, isLoading, isLoadingMore, tools.length, currentPricing, currentQuery, currentSource, currentTag])
 
-  function updateUrl(nextQuery, nextPricing, nextSource = sourceFilter) {
+  function updateUrl(nextQuery, nextPricing, nextTag = tagFilter, nextSource = sourceFilter) {
     const params = new URLSearchParams(searchParams.toString())
 
     if (nextQuery?.trim()) {
@@ -155,6 +188,12 @@ function ToolsPageContent() {
       params.delete('pricing')
     }
 
+    if (nextTag && nextTag !== 'all') {
+      params.set('tag', nextTag)
+    } else {
+      params.delete('tag')
+    }
+
     if (nextSource?.trim()) {
       params.set('source', nextSource.trim())
     } else {
@@ -167,17 +206,22 @@ function ToolsPageContent() {
 
   function handleSearchChange(nextValue) {
     setSearchQuery(nextValue)
-    updateUrl(nextValue, pricingFilter, sourceFilter)
+    updateUrl(nextValue, pricingFilter, tagFilter, sourceFilter)
   }
 
   function handlePricingChange(nextPricing) {
     setPricingFilter(nextPricing)
-    updateUrl(searchQuery, nextPricing, sourceFilter)
+    updateUrl(searchQuery, nextPricing, tagFilter, sourceFilter)
+  }
+
+  function handleTagChange(nextTag) {
+    setTagFilter(nextTag)
+    updateUrl(searchQuery, pricingFilter, nextTag, sourceFilter)
   }
 
   function handleOriginalsBrowse() {
     setSourceFilter('whatsthatai-original')
-    updateUrl(searchQuery, pricingFilter, 'whatsthatai-original')
+    updateUrl(searchQuery, pricingFilter, tagFilter, 'whatsthatai-original')
     setShowOriginalsBanner(false)
   }
 
@@ -208,6 +252,10 @@ function ToolsPageContent() {
 
       if (currentPricing !== 'all') {
         params.set('pricing', currentPricing)
+      }
+
+      if (currentTag !== 'all') {
+        params.set('tag', currentTag)
       }
 
       if (currentSource.trim()) {
@@ -292,6 +340,44 @@ function ToolsPageContent() {
           })}
         </div>
 
+        {availableTags.length > 0 ? (
+          <div className="mb-10 flex flex-wrap items-center justify-center gap-3">
+            <motion.button
+              type="button"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleTagChange('all')}
+              className={`rounded-[16px] border px-4 py-2 text-[12px] font-semibold transition ${
+                tagFilter === 'all'
+                  ? 'border-sky-200 bg-sky-50 text-sky-700 shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-600 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              All Tags
+            </motion.button>
+            {availableTags.map((tag) => {
+              const isActive = tagFilter.toLowerCase() === String(tag.name).toLowerCase()
+
+              return (
+                <motion.button
+                  key={tag.id}
+                  type="button"
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleTagChange(tag.name)}
+                  className={`rounded-[16px] border px-4 py-2 text-[12px] font-semibold transition ${
+                    isActive
+                      ? 'border-sky-200 bg-sky-50 text-sky-700 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  {tag.name}
+                </motion.button>
+              )
+            })}
+          </div>
+        ) : null}
+
         <div className="mb-10 text-center text-[14px]">
           <p className="text-slate-500">
             Showing <span className="font-semibold text-slate-900">{tools.length}</span>
@@ -306,6 +392,12 @@ function ToolsPageContent() {
               <span>
                 {' '}
                 with <span className="font-semibold text-slate-900">{pricingFilter}</span> pricing
+              </span>
+            ) : null}
+            {tagFilter !== 'all' ? (
+              <span>
+                {' '}
+                tagged <span className="font-semibold text-slate-900">{tagFilter}</span>
               </span>
             ) : null}
           </p>

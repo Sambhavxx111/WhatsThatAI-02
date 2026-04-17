@@ -26,8 +26,29 @@ model Tool {
   activity    UserActivity[]
   likes       UserLike[]
   curatedCollectionTools CuratedCollectionTool[]
+  tagLinks    ToolTag[]
 
   @@map("tools")
+}
+
+model Tag {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique(map: "tags_name_key") @db.VarChar(100)
+  toolLinks ToolTag[]
+
+  @@map("tags")
+}
+
+model ToolTag {
+  toolId     Int      @map("tool_id")
+  tagId      Int      @map("tag_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  tool       Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade, map: "fk_tool_tags_tool")
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade, map: "fk_tool_tags_tag")
+
+  @@id([toolId, tagId])
+  @@index([tagId], map: "tool_tags_tag_id_idx")
+  @@map("tool_tags")
 }
 
 model User {

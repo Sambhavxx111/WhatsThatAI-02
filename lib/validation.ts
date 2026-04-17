@@ -20,12 +20,45 @@ const optionalSanitizedString = (max = 600) =>
     .pipe(z.string().max(max))
     .optional()
 
+const optionalTagsSchema = z
+  .preprocess((value) => {
+    if (Array.isArray(value)) {
+      return value
+    }
+
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    }
+
+    return []
+  }, z.array(sanitizedString(2, 40)).max(8))
+  .optional()
+  .default([])
+
 export const toolSubmissionSchema = z.object({
   name: sanitizedString(2, 120),
   url: z.string().url(),
   description: sanitizedString(2, 500),
-  category: sanitizedString(1, 80),
+  category: sanitizedString(1, 80).optional().default('AI Tools'),
+  tags: optionalTagsSchema,
   pricing: z.enum(['free', 'freemium', 'paid', 'enterprise']).optional(),
+})
+
+export const toolWriteSchema = z.object({
+  name: sanitizedString(2, 120),
+  slug: optionalSanitizedString(160),
+  description: sanitizedString(2, 500),
+  category: sanitizedString(1, 80).optional().default('AI Tools'),
+  tags: optionalTagsSchema,
+  pricing: z.enum(['free', 'freemium', 'paid', 'enterprise']).optional(),
+  websiteUrl: z.string().url(),
+  logoUrl: z.string().url().optional().or(z.literal('')).default(''),
+  source: optionalSanitizedString(50),
+  status: z.enum(['approved', 'pending', 'rejected']).optional(),
+  active: z.coerce.boolean().optional(),
 })
 
 export const reviewSchema = z.object({
@@ -41,6 +74,7 @@ export const reviewDeleteSchema = z.object({
 export const searchSchema = z.object({
   query: sanitizedString(1, 120),
   filter: optionalSanitizedString(80),
+  tag: optionalSanitizedString(80),
 })
 
 export const instagramUrlSchema = z.object({

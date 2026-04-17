@@ -53,6 +53,7 @@ export default function ToolCard({ tool, index }) {
   const logoSource = getLogoSource(tool)
   const showLogo = Boolean(logoSource) && !logoFailed
   const showOriginalBadge = isWhatsThatAIOriginal(tool)
+  const visibleTags = Array.isArray(tool.tags) ? tool.tags.slice(0, 3) : []
 
   function handleClick() {
     trackToolActivity(tool.id, 'click')
@@ -115,6 +116,18 @@ export default function ToolCard({ tool, index }) {
               <p className="line-clamp-2 text-[14px] leading-relaxed text-slate-500 font-medium">
                 {tool.description}
               </p>
+              {visibleTags.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {visibleTags.map((tag) => (
+                    <span
+                      key={`${tool.id}-${tag}`}
+                      className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-auto">
