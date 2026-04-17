@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
+    "db:migrate-tool-tags": "node scripts/migrate-tool-tags.js",
     "db:promote-admins": "node scripts/promote-admins.js",
     "db:fill-test-tools": "node scripts/fill-test-tools.js",
     "db:replace-generated-with-real": "node scripts/replace-generated-with-real-tools.js",
