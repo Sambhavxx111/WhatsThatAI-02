@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { clearAuthCookies, rotateSessionTokens, setAuthCookies } from '@/lib/auth'
+import { rotateSessionTokens, setAuthCookies } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/api-rate-limit'
 import { logSecurityEvent, logUnauthorizedAccess } from '@/lib/securityLogger'
 
@@ -26,8 +26,7 @@ export async function POST(request: NextRequest) {
           reason: 'invalid_refresh_token',
         },
       })
-      const response = NextResponse.json({ error: 'Invalid refresh token.' }, { status: 401 })
-      return clearAuthCookies(response)
+      return NextResponse.json({ error: 'Invalid refresh token.' }, { status: 401 })
     }
 
     await logSecurityEvent({
