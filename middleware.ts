@@ -3,6 +3,7 @@ import { jwtVerify } from 'jose'
 import { getAdminAppUrl, isAdminHost } from '@/lib/admin-host'
 
 const ACCESS_COOKIE_NAME = 'whatsthatai_access_token'
+const REFRESH_COOKIE_NAME = 'whatsthatai_refresh_token'
 const ADMIN_ROLE = 'admin'
 const PROTECTED_PREFIXES = ['/api/admin/', '/portal/']
 
@@ -105,8 +106,12 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedPath(request.nextUrl.pathname)) {
     const token = request.cookies.get(ACCESS_COOKIE_NAME)?.value
+    const refreshToken = request.cookies.get(REFRESH_COOKIE_NAME)?.value
 
     if (!token) {
+      if (refreshToken) {
+        return applySecurityHeaders(NextResponse.next())
+      }
       return forbiddenResponse(request)
     }
 
@@ -114,9 +119,15 @@ export async function middleware(request: NextRequest) {
       const isAdmin = await verifyAdminToken(token)
 
       if (!isAdmin) {
+        if (refreshToken) {
+          return applySecurityHeaders(NextResponse.next())
+        }
         return forbiddenResponse(request)
       }
     } catch {
+      if (refreshToken) {
+        return applySecurityHeaders(NextResponse.next())
+      }
       return forbiddenResponse(request)
     }
   }

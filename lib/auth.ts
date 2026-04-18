@@ -49,6 +49,39 @@ type RequestWithCookies = {
   }
 }
 
+async function getUserFromRefreshToken(request: RequestWithCookies) {
+  const refreshToken = request.cookies?.get?.(REFRESH_COOKIE_NAME)?.value
+
+  if (!refreshToken) {
+    return null
+  }
+
+  const payload = verifyRefreshToken(refreshToken)
+
+  if (!payload?.sub || !payload.sid) {
+    return null
+  }
+
+  const session = await db.authSession.findUnique({
+    where: {
+      id: payload.sid,
+    },
+    include: {
+      user: true,
+    },
+  })
+
+  if (!session || session.userId !== Number(payload.sub) || session.revokedAt || session.expiresAt <= new Date()) {
+    return null
+  }
+
+  if (session.refreshTokenHash !== hashSessionToken(refreshToken)) {
+    return null
+  }
+
+  return sanitizeUser(session.user)
+}
+
 function getJwtSecret(): Secret {
   const secret = String(process.env.JWT_SECRET || '').trim()
 
@@ -444,23 +477,23 @@ export function isAdminUser(user: { role?: AuthRole | null } | null | undefined)
 export async function getAuthenticatedUser(request: RequestWithCookies) {
   const token = request.cookies?.get?.(ACCESS_COOKIE_NAME)?.value
 
-  if (!token) {
-    return null
+  if (token) {
+    const payload = verifyAccessToken(token)
+
+    if (payload?.sub) {
+      const user = await db.user.findUnique({
+        where: {
+          id: Number(payload.sub),
+        },
+      })
+
+      if (user) {
+        return sanitizeUser(user)
+      }
+    }
   }
 
-  const payload = verifyAccessToken(token)
-
-  if (!payload?.sub) {
-    return null
-  }
-
-  const user = await db.user.findUnique({
-    where: {
-      id: Number(payload.sub),
-    },
-  })
-
-  return sanitizeUser(user)
+  return getUserFromRefreshToken(request)
 }
 
 export async function requireVerifiedUser(request: RequestWithCookies) {

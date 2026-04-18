@@ -1,4 +1,4 @@
-import SubmitTool from '@/Components/SubmitTool'
+import SubmitTool from '@/components/SubmitTool'
 
 export default function SubmitToolPage() {
   return (

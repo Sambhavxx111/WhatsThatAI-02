@@ -1,31 +1,12 @@
 import { cookies, headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
-import { db } from '@/lib/db'
-import { AUTH_COOKIE_NAME, isAdminUser, sanitizeUser, verifyAuthToken } from '@/lib/auth'
+import { getAuthenticatedUser, isAdminUser } from '@/lib/auth'
 import { isAdminHost } from '@/lib/admin-host'
 import { logUnauthorizedAccess } from '@/lib/securityLogger'
 
 async function getPortalUser() {
   const cookieStore = await cookies()
-  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value
-
-  if (!token) {
-    return null
-  }
-
-  const payload = verifyAuthToken(token)
-
-  if (!payload?.sub) {
-    return null
-  }
-
-  const user = await db.user.findUnique({
-    where: {
-      id: Number(payload.sub),
-    },
-  })
-
-  return sanitizeUser(user)
+  return getAuthenticatedUser({ cookies: cookieStore })
 }
 
 function buildRequestLike(requestHeaders, path) {
