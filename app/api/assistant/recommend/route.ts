@@ -7,6 +7,7 @@ import {
   sanitizeText,
 } from '@/lib/validation'
 import { attachRatingsToTools } from '@/lib/queries'
+import { extractTagNames, getPrimaryCategory } from '@/lib/tool-tags'
 
 type GeminiPlan = {
   intentSummary: string
@@ -29,6 +30,88 @@ type ToolCandidate = {
   totalReviews: number
   websiteUrl: string
   logoUrl: string
+}
+
+function isMissingTagSchemaError(error: unknown): boolean {
+  const message = String((error as { message?: string })?.message || '')
+  const code = (error as { code?: string })?.code
+
+  return (
+    code === 'P2021' ||
+    message.includes('tool_tags') ||
+    message.includes('tags') ||
+    message.includes('tagLinks') ||
+    message.includes('The table') ||
+    message.includes('does not exist')
+  )
+}
+
+function mapLegacyToolCandidate(tool: any): ToolCandidate {
+  const tags = extractTagNames(tool)
+
+  return {
+    id: tool.id,
+    name: tool.name,
+    slug: tool.slug || '',
+    description: tool.description || '',
+    category: getPrimaryCategory(tool.category, tags),
+    tags,
+    pricing: String(tool.pricing || ''),
+    source: String(tool.source || ''),
+    avgRating: null,
+    totalReviews: 0,
+    websiteUrl: tool.websiteUrl || '',
+    logoUrl: tool.logoUrl || '',
+  }
+}
+
+async function findAssistantCandidates(where: any) {
+  try {
+    return await db.tool.findMany({
+      where,
+      include: {
+        tagLinks: {
+          include: {
+            tag: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { name: 'asc' }],
+      take: 40,
+    })
+  } catch (error) {
+    if (!isMissingTagSchemaError(error)) {
+      throw error
+    }
+
+    const legacyWhere = { ...where }
+    delete legacyWhere.OR
+
+    const queryTerms = [
+      ...(Array.isArray(where?.OR) ? where.OR : []),
+    ]
+      .flatMap((clause: any) => {
+        if (clause?.name?.contains) return [clause.name.contains]
+        if (clause?.category?.contains) return [clause.category.contains]
+        if (clause?.description?.contains) return [clause.description.contains]
+        return []
+      })
+      .filter(Boolean)
+
+    if (queryTerms.length > 0) {
+      legacyWhere.OR = queryTerms.flatMap((term: string) => [
+        { name: { contains: term } },
+        { category: { contains: term } },
+        { description: { contains: term } },
+      ])
+    }
+
+    return db.tool.findMany({
+      where: legacyWhere,
+      orderBy: [{ createdAt: 'desc' }, { name: 'asc' }],
+      take: 40,
+    })
+  }
 }
 
 const GEMINI_MODEL = 'gemini-2.5-flash'
@@ -431,48 +514,40 @@ export async function POST(request: NextRequest) {
         ? { pricing: plan.pricingPreference }
         : {}
 
-    const candidates = await db.tool.findMany({
-      where: {
-        status: 'approved',
-        active: true,
-        ...pricingFilter,
-        ...(keywordClauses.length || categoryClauses.length
-          ? {
-              OR: [...keywordClauses, ...categoryClauses],
-            }
-          : {}),
-      },
-      include: {
-        tagLinks: {
-          include: {
-            tag: true,
-          },
-        },
-      },
-      orderBy: [{ createdAt: 'desc' }, { name: 'asc' }],
-      take: 40,
-    })
+    const candidateWhere = {
+      status: 'approved',
+      active: true,
+      ...pricingFilter,
+      ...(keywordClauses.length || categoryClauses.length
+        ? {
+            OR: [...keywordClauses, ...categoryClauses],
+          }
+        : {}),
+    }
+
+    const candidates = await findAssistantCandidates(candidateWhere)
 
     const fallbackCandidates =
       candidates.length > 0
         ? candidates
-        : await db.tool.findMany({
-            where: {
-              status: 'approved',
-              active: true,
-            },
-            include: {
-              tagLinks: {
-                include: {
-                  tag: true,
-                },
-              },
-            },
-            orderBy: [{ createdAt: 'desc' }, { name: 'asc' }],
-            take: 40,
+        : await findAssistantCandidates({
+            status: 'approved',
+            active: true,
           })
 
-    const mappedTools = (await attachRatingsToTools(fallbackCandidates)) as ToolCandidate[]
+    const mappedTools = (
+      await attachRatingsToTools(
+        fallbackCandidates.map((tool: any) =>
+          tool?.tagLinks
+            ? tool
+            : {
+                ...tool,
+                tagLinks: [],
+                tags: mapLegacyToolCandidate(tool).tags,
+              }
+        )
+      )
+    ) as ToolCandidate[]
 
     const rankedTools = mappedTools
       .map((tool) => ({
