@@ -44,9 +44,23 @@ export default function Footer() {
         <div className="mt-20 flex flex-col gap-6 border-t border-slate-200 pt-8 text-xs font-medium text-slate-500 md:flex-row md:items-center md:justify-between">
           <p>&copy; {new Date().getFullYear()} WhatsThatAI. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="#" className="transition hover:text-slate-900">Twitter</a>
+            <a
+              href="https://x.com"
+              target="_blank"
+              rel="noreferrer"
+              className="transition hover:text-slate-900"
+            >
+              X
+            </a>
             <a href="#" className="transition hover:text-slate-900">GitHub</a>
-            <a href="#" className="transition hover:text-slate-900">Discord</a>
+            <a
+              href="https://www.linkedin.com/company/whatsthatai/"
+              target="_blank"
+              rel="noreferrer"
+              className="transition hover:text-slate-900"
+            >
+              LinkedIn
+            </a>
           </div>
         </div>
       </div>

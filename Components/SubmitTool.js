@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 
 const initialForm = {
@@ -43,8 +44,11 @@ export default function SubmitTool() {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
-  const [humanCheck, setHumanCheck] = useState(false)
-  const [qualityCheck, setQualityCheck] = useState(false)
+  const [agreements, setAgreements] = useState({
+    submissionAgreement: false,
+    privacyPolicy: false,
+    ageConfirmation: false,
+  })
   const [honeypot, setHoneypot] = useState('')
   const [cooldownUntil, setCooldownUntil] = useState(0)
 
@@ -59,9 +63,9 @@ export default function SubmitTool() {
   const descriptionLength = form.description.trim().length
   const websiteLooksValid = isValidUrl(form.url)
   const nameLooksValid = form.name.trim().length >= 3
+  const allAgreementsAccepted = Object.values(agreements).every(Boolean)
   const readyToSubmit =
-    humanCheck &&
-    qualityCheck &&
+    allAgreementsAccepted &&
     !honeypot &&
     nameLooksValid &&
     descriptionLength >= 60 &&
@@ -86,11 +90,19 @@ export default function SubmitTool() {
     setError('')
   }
 
+  function toggleAgreement(key) {
+    setAgreements((current) => ({
+      ...current,
+      [key]: !current[key],
+    }))
+    setError('')
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
 
     if (!readyToSubmit) {
-      setError('Please complete the verification checks and fill in a real tool profile before submitting.')
+      setError('Please accept the submission agreements and fill in a real tool profile before submitting.')
       return
     }
 
@@ -120,8 +132,11 @@ export default function SubmitTool() {
       window.localStorage.setItem(cooldownKey, String(now))
       setCooldownUntil(now + 60 * 1000)
       setForm(initialForm)
-      setHumanCheck(false)
-      setQualityCheck(false)
+      setAgreements({
+        submissionAgreement: false,
+        privacyPolicy: false,
+        ageConfirmation: false,
+      })
       setSuccess(true)
     } catch {
       setError('We could not submit this tool right now. Please try again in a moment.')
@@ -130,6 +145,48 @@ export default function SubmitTool() {
       setSubmitting(false)
     }
   }
+
+  const agreementRows = [
+    {
+      key: 'submissionAgreement',
+      label: (
+        <>
+          I have read and agree to the{' '}
+          <Link
+            href="/whatsthatai-submission-agreement.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition hover:decoration-white"
+          >
+            WhatsThatAI Submission Agreement
+          </Link>
+          . I confirm that my submission is genuine, accurate, and does not violate any prohibited submission rules.
+        </>
+      ),
+    },
+    {
+      key: 'privacyPolicy',
+      label: (
+        <>
+          I have read and agree to the{' '}
+          <Link
+            href="/whatsthatai-submission-agreement.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition hover:decoration-white"
+          >
+            Privacy Policy
+          </Link>
+          . I understand how my personal data will be collected and used in connection with this submission.
+        </>
+      ),
+    },
+    {
+      key: 'ageConfirmation',
+      label:
+        'I confirm that I am at least 18 years old and have the authority to make this submission.',
+    },
+  ]
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -327,26 +384,49 @@ export default function SubmitTool() {
             </div>
           </div>
 
-          <div className="mt-8 space-y-4 rounded-[20px] border border-white/5 bg-[#141414] p-6">
-            <label className="flex items-start gap-4 text-[14px] leading-relaxed font-medium text-neutral-300">
-              <input
-                type="checkbox"
-                checked={humanCheck}
-                onChange={(event) => setHumanCheck(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-white focus:ring-white"
-              />
-              <span>I'm a real person and this is a genuine AI tool submission.</span>
-            </label>
+          <div className="mt-8">
+            <div className="mb-4 rounded-[18px] border border-[#6968ff]/20 bg-[#6968ff]/8 px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8f8dff]">
+                Submission Terms
+              </p>
+              <p className="mt-2 text-[14px] leading-relaxed font-medium text-neutral-200">
+                Please review and accept the legal terms below before submitting your tool for review.
+              </p>
+            </div>
 
-            <label className="flex items-start gap-4 text-[14px] leading-relaxed font-medium text-neutral-300">
-              <input
-                type="checkbox"
-                checked={qualityCheck}
-                onChange={(event) => setQualityCheck(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-white focus:ring-white"
-              />
-              <span>I've personally checked the tool and the website works, matches the name, and deserves review.</span>
-            </label>
+            <div className="space-y-3">
+            {agreementRows.map((agreement) => {
+              const checked = agreements[agreement.key]
+
+              return (
+                <button
+                  key={agreement.key}
+                  type="button"
+                  onClick={() => toggleAgreement(agreement.key)}
+                  className="flex w-full items-start gap-4 rounded-[20px] border border-white/8 bg-[#141414] px-5 py-5 text-left transition hover:border-white/15 hover:bg-[#171717]"
+                >
+                  <span
+                    className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-[8px] border transition ${
+                      checked
+                        ? 'border-[#6968ff] bg-[#6968ff] text-white shadow-[0_8px_24px_rgba(105,104,255,0.3)]'
+                        : 'border-white/10 bg-[#101010] text-transparent'
+                    }`}
+                  >
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                      <path
+                        fillRule="evenodd"
+                        d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.2 7.26a1 1 0 0 1-1.42.002L3.29 9.166a1 1 0 1 1 1.414-1.414l4.096 4.096 6.49-6.55a1 1 0 0 1 1.414-.008Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </span>
+                  <span className="text-[14px] leading-relaxed font-medium text-neutral-200">
+                    {agreement.label}
+                  </span>
+                </button>
+              )
+            })}
+            </div>
           </div>
 
           <div className="mt-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">

@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import UserAvatar from '@/components/ui/UserAvatar'
@@ -69,13 +70,20 @@ export default function Navbar() {
     <motion.nav
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.65, ease: 'easeOut' }}
-      className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6"
+        transition={{ duration: 0.65, ease: 'easeOut' }}
+        className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6"
     >
       <div className={`mx-auto flex max-w-7xl items-center justify-between rounded-[24px] border px-4 py-3 transition-all duration-500 sm:px-6 ${scrolled ? 'border-slate-200 bg-white/90 shadow-sm backdrop-blur-2xl' : 'border-transparent bg-transparent'}`}>
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-slate-900 text-sm font-bold text-white shadow-sm transition hover:scale-105">
-            AI
+          <div className="overflow-hidden rounded-[14px] shadow-sm transition hover:scale-105">
+            <Image
+              src="/whatsthatai-logo.png"
+              alt="WhatsThatAI logo"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-[14px] object-cover"
+              priority
+            />
           </div>
           <div className="hidden sm:block">
             <p className="text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">WhatsThatAI</p>

@@ -305,7 +305,7 @@ export default function GuideMascotLauncher() {
   }
 
   return (
-    <div className="pointer-events-none fixed bottom-6 right-4 z-[70] lg:right-8">
+    <div className="pointer-events-none fixed bottom-24 right-4 z-[70] lg:right-8 lg:bottom-28">
       <div className="pointer-events-auto flex items-end gap-3">
         <AnimatePresence>
           {!isOpen && showBubble ? (
