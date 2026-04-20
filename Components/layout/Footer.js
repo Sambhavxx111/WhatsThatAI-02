@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 
 export default function Footer() {
@@ -9,8 +10,14 @@ export default function Footer() {
         <div className="grid gap-12 md:grid-cols-4">
           <div className="md:col-span-2 pr-8">
             <Link href="/" className="flex items-center gap-3 w-fit">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-slate-900 text-sm font-bold text-white shadow-sm">
-                AI
+              <div className="overflow-hidden rounded-[14px] shadow-sm">
+                <Image
+                  src="/whatsthatai-logo.png"
+                  alt="WhatsThatAI logo"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 rounded-[14px] object-cover"
+                />
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">WhatsThatAI</p>
@@ -27,7 +34,6 @@ export default function Footer() {
             <ul className="mt-6 space-y-4 text-sm font-medium text-slate-500">
               <li><Link href="/tools" className="transition hover:text-blue-600">All Tools</Link></li>
               <li><Link href="/categories" className="transition hover:text-blue-600">Categories</Link></li>
-              <li><Link href="/pricing" className="transition hover:text-blue-600">Pricing</Link></li>
             </ul>
           </div>
 
@@ -45,14 +51,21 @@ export default function Footer() {
           <p>&copy; {new Date().getFullYear()} WhatsThatAI. All rights reserved.</p>
           <div className="flex gap-6">
             <a
-              href="https://x.com"
+              href="https://x.com/Whats_That_Ai"
               target="_blank"
               rel="noreferrer"
               className="transition hover:text-slate-900"
             >
               X
             </a>
-            <a href="#" className="transition hover:text-slate-900">GitHub</a>
+            <a
+              href="https://www.instagram.com/whatsthatai.co/"
+              target="_blank"
+              rel="noreferrer"
+              className="transition hover:text-slate-900"
+            >
+              Instagram
+            </a>
             <a
               href="https://www.linkedin.com/company/whatsthatai/"
               target="_blank"
