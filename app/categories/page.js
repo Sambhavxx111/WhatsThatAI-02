@@ -288,12 +288,17 @@ export default async function CategoriesPage() {
               >
                 <Link href={`/tools?q=${encodeURIComponent(category.name)}`} className="group block h-full">
                   <div className={`relative h-full overflow-hidden rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm transition-all duration-500 bg-gradient-to-br from-white to-white hover:to-slate-50 ${accentHover}`}>
+                    <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-gradient-to-br from-sky-100/70 via-white to-violet-100/60 blur-3xl opacity-80 transition duration-700 group-hover:scale-110 group-hover:opacity-100" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent opacity-70" />
                     <Decorative />
                     
                     <div className="relative z-10 flex h-full flex-col pointer-events-none">
                       <div className="mb-8 flex items-start justify-between gap-4">
-                        <div className={`flex h-14 w-14 items-center justify-center rounded-[16px] shadow-sm transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3 ${iconTheme}`}>
-                          <Icon className="h-6 w-6" strokeWidth={2} />
+                        <div className="relative">
+                          <div className="absolute inset-0 rounded-[22px] bg-gradient-to-br from-white via-white/70 to-slate-100/90 blur-md opacity-90 transition duration-500 group-hover:scale-110" />
+                          <div className={`relative flex h-16 w-16 items-center justify-center rounded-[20px] border border-white/60 shadow-[0_14px_40px_rgba(15,23,42,0.08)] transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3 ${iconTheme}`}>
+                            <Icon className="h-7 w-7" strokeWidth={2} />
+                          </div>
                         </div>
                         <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] transition-colors duration-500 ${badgeTheme}`}>
                           {badge}

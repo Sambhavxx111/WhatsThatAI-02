@@ -48,19 +48,13 @@ export default function Home() {
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.18 }}
-            className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row"
+            className="mt-12 flex items-center justify-center"
           >
             <Link
               href="/tools"
               className="inline-flex h-[52px] items-center justify-center rounded-[18px] bg-slate-900 px-7 text-[15px] font-semibold text-white transition hover:bg-slate-800"
             >
               Browse marketplace
-            </Link>
-            <Link
-              href="/identify"
-              className="inline-flex h-[52px] items-center justify-center rounded-[18px] border border-slate-200 bg-white px-7 text-[15px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              Open tool finder
             </Link>
           </motion.div>
 

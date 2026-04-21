@@ -13,6 +13,7 @@ const PRICING_FILTERS = [
   { label: 'Paid', value: 'paid' },
 ]
 const TOOLS_BATCH_SIZE = 24
+const ENABLE_ORIGINALS_BANNER = false
 
 const ORIGINALS_BANNER_DISMISS_KEY = 'whatsthatai-originals-banner-dismissed-at'
 const ORIGINALS_BANNER_DISMISS_MS = 24 * 60 * 60 * 1000
@@ -72,6 +73,11 @@ function ToolsPageContent() {
   }, [])
 
   useEffect(() => {
+    if (!ENABLE_ORIGINALS_BANNER) {
+      setShowOriginalsBanner(false)
+      return
+    }
+
     if (typeof window === 'undefined') return
 
     const dismissedAtValue = window.localStorage.getItem(ORIGINALS_BANNER_DISMISS_KEY)
@@ -80,10 +86,10 @@ function ToolsPageContent() {
       Number.isFinite(dismissedAt) &&
       dismissedAt > 0 &&
       Date.now() - dismissedAt < ORIGINALS_BANNER_DISMISS_MS
-    const isOriginalsView = (searchParams.get('source') || '').toLowerCase() === 'whatsthatai-original'
+    const isOriginalsView = String(currentSource || '').toLowerCase() === 'whatsthatai-original'
 
     setShowOriginalsBanner(!isDismissed && !isOriginalsView)
-  }, [searchParams])
+  }, [currentSource])
 
   useEffect(() => {
     let isCancelled = false
@@ -225,7 +231,10 @@ function ToolsPageContent() {
     setShowOriginalsBanner(false)
   }
 
-  function handleDismissOriginalsBanner() {
+  function handleDismissOriginalsBanner(event) {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(ORIGINALS_BANNER_DISMISS_KEY, String(Date.now()))
     }
@@ -315,6 +324,9 @@ function ToolsPageContent() {
             placeholder="Search tools, workflows, or categories"
             size="large"
           />
+          <p className="mt-4 text-center text-[13px] font-medium text-slate-500">
+            Fresh AI tools are added daily so the catalog keeps getting sharper.
+          </p>
         </div>
 
         <div className="mb-10 flex flex-wrap items-center justify-center gap-3">
@@ -438,7 +450,7 @@ function ToolsPageContent() {
         ) : null}
       </div>
 
-      {showOriginalsBanner ? (
+      {ENABLE_ORIGINALS_BANNER && showOriginalsBanner ? (
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
