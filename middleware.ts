@@ -18,13 +18,18 @@ function getJwtSecret(): Uint8Array {
 }
 
 function buildCsp(): string {
+  const isDevelopment = process.env.NODE_ENV !== 'production'
   const directives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    isDevelopment
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
-    "connect-src 'self' https: blob:",
+    isDevelopment
+      ? "connect-src 'self' https: http: ws: wss: blob:"
+      : "connect-src 'self' https: blob:",
     "media-src 'self' blob: https:",
     "worker-src 'self' blob:",
     "object-src 'none'",

@@ -27,6 +27,18 @@ function getLogoSource(tool) {
   }
 }
 
+function getWebsiteHost(tool) {
+  if (!tool?.websiteUrl) {
+    return 'Website unavailable'
+  }
+
+  try {
+    return new URL(tool.websiteUrl).hostname.replace(/^www\./, '')
+  } catch {
+    return 'Website unavailable'
+  }
+}
+
 function isWhatsThatAIOriginal(tool) {
   return String(tool?.source || '').toLowerCase() === 'whatsthatai-original'
 }
@@ -159,6 +171,7 @@ export default function ToolPage() {
   const showLogo = Boolean(logoSource) && !logoFailed
   const showOriginalBadge = isWhatsThatAIOriginal(tool)
   const visibleTags = Array.isArray(tool.tags) ? tool.tags : []
+  const websiteHost = getWebsiteHost(tool)
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] px-4 pb-20 pt-32 sm:px-6 lg:px-8">
@@ -170,102 +183,136 @@ export default function ToolPage() {
           className="mb-8"
         >
           <GlassCard className="p-8 md:p-12">
-            <div className="mb-8 flex flex-col md:flex-row md:items-start gap-6 lg:gap-8">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-white border border-slate-200 text-xl font-bold text-slate-900 shadow-sm">
-                {showLogo ? (
-                  <img
-                    src={logoSource}
-                    alt={`${tool.name} logo`}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    onError={() => setLogoFailed(true)}
-                  />
-                ) : (
-                  tool.icon
-                )}
-              </div>
-              <div className="flex-1">
-                {showOriginalBadge ? (
-                  <div className="mb-3">
-                    <OriginalBlueTick />
+            <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+              <div>
+                <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-white text-xl font-bold text-slate-900 shadow-sm">
+                    {showLogo ? (
+                      <img
+                        src={logoSource}
+                        alt={`${tool.name} logo`}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        onError={() => setLogoFailed(true)}
+                      />
+                    ) : (
+                      tool.icon
+                    )}
                   </div>
-                ) : null}
-                <div className="mb-3 flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">{tool.name}</h1>
-                  {showOriginalBadge ? (
-                    <span className="text-sky-500" aria-label="WhatsThatAI Original verified">
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 1.5a2 2 0 0 1 1.63.84l.66.93 1.13.18a2 2 0 0 1 1.5 1.14l.5 1.03 1.03.5a2 2 0 0 1 1.14 1.5l.18 1.13.93.66a2 2 0 0 1 .84 1.63 2 2 0 0 1-.84 1.63l-.93.66-.18 1.13a2 2 0 0 1-1.14 1.5l-1.03.5-.5 1.03a2 2 0 0 1-1.5 1.14l-1.13.18-.66.93A2 2 0 0 1 10 18.5a2 2 0 0 1-1.63-.84l-.66-.93-1.13-.18a2 2 0 0 1-1.5-1.14l-.5-1.03-1.03-.5a2 2 0 0 1-1.14-1.5l-.18-1.13-.93-.66A2 2 0 0 1 .5 10a2 2 0 0 1 .84-1.63l.93-.66.18-1.13a2 2 0 0 1 1.14-1.5l1.03-.5.5-1.03a2 2 0 0 1 1.5-1.14l1.13-.18.66-.93A2 2 0 0 1 10 1.5Zm3.03 6.22a.75.75 0 0 0-1.06-1.06L8.75 9.88 7.53 8.66a.75.75 0 0 0-1.06 1.06l1.75 1.75a.75.75 0 0 0 1.06 0l3.75-3.75Z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </span>
+                  <div className="flex-1">
+                    {showOriginalBadge ? (
+                      <div className="mb-3">
+                        <OriginalBlueTick />
+                      </div>
+                    ) : null}
+                    <div className="mb-3 flex flex-wrap items-center gap-3">
+                      <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">{tool.name}</h1>
+                      {showOriginalBadge ? (
+                        <span className="text-sky-500" aria-label="WhatsThatAI Original verified">
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6">
+                            <path
+                              fillRule="evenodd"
+                              d="M10 1.5a2 2 0 0 1 1.63.84l.66.93 1.13.18a2 2 0 0 1 1.5 1.14l.5 1.03 1.03.5a2 2 0 0 1 1.14 1.5l.18 1.13.93.66a2 2 0 0 1 .84 1.63 2 2 0 0 1-.84 1.63l-.93.66-.18 1.13a2 2 0 0 1-1.14 1.5l-1.03.5-.5 1.03a2 2 0 0 1-1.5 1.14l-1.13.18-.66.93A2 2 0 0 1 10 18.5a2 2 0 0 1-1.63-.84l-.66-.93-1.13-.18a2 2 0 0 1-1.5-1.14l-.5-1.03-1.03-.5a2 2 0 0 1-1.14-1.5l-.18-1.13-.93-.66A2 2 0 0 1 .5 10a2 2 0 0 1 .84-1.63l.93-.66.18-1.13a2 2 0 0 1 1.14-1.5l1.03-.5.5-1.03a2 2 0 0 1 1.5-1.14l1.13-.18.66-.93A2 2 0 0 1 10 1.5Zm3.03 6.22a.75.75 0 0 0-1.06-1.06L8.75 9.88 7.53 8.66a.75.75 0 0 0-1.06 1.06l1.75 1.75a.75.75 0 0 0 1.06 0l3.75-3.75Z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-semibold text-slate-600">
+                        {tool.category}
+                      </span>
+                      {visibleTags.map((tag) => (
+                        <span
+                          key={`${tool.id}-${tag}`}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] font-medium text-slate-500"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <section className="rounded-[24px] border border-slate-200 bg-white/70 p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">What this tool does</p>
+                    <p className="mt-4 max-w-3xl text-[17px] leading-relaxed text-slate-600 font-medium">
+                      {tool.description}
+                    </p>
+                  </section>
+
+                  <section className="rounded-[24px] border border-slate-200 bg-white/70 p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Community signal</p>
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-slate-500">How people are rating this tool</p>
+                        <StarRating rating={tool.avgRating} totalReviews={tool.totalReviews} size="lg" />
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
+                        {tool.totalReviews || 0} community reviews
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <section className="rounded-[24px] border border-slate-200 bg-slate-50 p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Official website</p>
+                  <p className="mt-3 text-lg font-bold text-slate-900">{websiteHost}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Use the official website button below to open the product directly from its source.
+                  </p>
+
+                  <div className="mt-5 flex flex-col gap-3">
+                    <a href={tool.websiteUrl || '#'} target="_blank" rel="noreferrer" className="w-full" onClick={handleVisitWebsite}>
+                      <Button variant="primary" className="w-full h-[52px]">
+                        Visit Website
+                      </Button>
+                    </a>
+                    <Button variant="secondary" className="w-full h-[52px]" onClick={handleLikeToggle}>
+                      {likeLoading
+                        ? 'Saving...'
+                        : isLiked
+                          ? 'Saved in Collection'
+                          : user
+                            ? 'Add to Collection'
+                            : 'Log In to Like'}
+                    </Button>
+                  </div>
+
+                  {isLiked ? (
+                    <div className="mt-4">
+                      <Link href="/liked-tools" className="text-[13px] font-medium text-slate-500 transition hover:text-slate-900 hover:underline">
+                        Open My Collection &rarr;
+                      </Link>
+                    </div>
                   ) : null}
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-semibold text-slate-600">
-                    {tool.category}
-                  </span>
-                  {visibleTags.map((tag) => (
-                    <span
-                      key={`${tool.id}-${tag}`}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] font-medium text-slate-500"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  <StarRating rating={tool.avgRating} totalReviews={tool.totalReviews} size="lg" />
-                </div>
+                </section>
+
+                <section className="rounded-[24px] border border-slate-200 bg-white/70 p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Key details</p>
+                  <div className="mt-4 grid grid-cols-1 gap-4">
+                    <div className="rounded-[20px] border border-slate-200 bg-white p-5 transition-colors hover:bg-slate-50">
+                      <h3 className="mb-1 text-[13px] font-semibold uppercase tracking-[0.1em] text-slate-500">Pricing</h3>
+                      <p className="text-[17px] font-bold text-slate-900">{tool.pricing}</p>
+                    </div>
+                    <div className="rounded-[20px] border border-slate-200 bg-white p-5 transition-colors hover:bg-slate-50">
+                      <h3 className="mb-1 text-[13px] font-semibold uppercase tracking-[0.1em] text-slate-500">Average rating</h3>
+                      <p className="text-[17px] font-bold text-slate-900">
+                        {tool.avgRating ? `${parseFloat(tool.avgRating).toFixed(1)} / 5.0` : 'No reviews'}
+                      </p>
+                    </div>
+                    <div className="rounded-[20px] border border-slate-200 bg-white p-5 transition-colors hover:bg-slate-50">
+                      <h3 className="mb-1 text-[13px] font-semibold uppercase tracking-[0.1em] text-slate-500">Total reviews</h3>
+                      <p className="text-[17px] font-bold text-slate-900">{tool.totalReviews || 0}</p>
+                    </div>
+                  </div>
+                </section>
               </div>
             </div>
-
-            <p className="mb-10 text-[17px] leading-relaxed text-slate-600 font-medium max-w-3xl">{tool.description}</p>
-
-            <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-[20px] border border-slate-200 bg-slate-50 p-5 transition-colors hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                <h3 className="mb-1 font-semibold text-[13px] uppercase tracking-[0.1em] text-slate-500">Pricing</h3>
-                <p className="text-[17px] font-bold text-slate-900">{tool.pricing}</p>
-              </div>
-              <div className="rounded-[20px] border border-slate-200 bg-slate-50 p-5 transition-colors hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                <h3 className="mb-1 font-semibold text-[13px] uppercase tracking-[0.1em] text-slate-500">Average Rating</h3>
-                <p className="text-[17px] font-bold text-slate-900">
-                  {tool.avgRating ? `${parseFloat(tool.avgRating).toFixed(1)} / 5.0` : 'No reviews'}
-                </p>
-              </div>
-              <div className="rounded-[20px] border border-slate-200 bg-slate-50 p-5 transition-colors hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                <h3 className="mb-1 font-semibold text-[13px] uppercase tracking-[0.1em] text-slate-500">Total Reviews</h3>
-                <p className="text-[17px] font-bold text-slate-900">{tool.totalReviews || 0}</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4 sm:flex-row max-w-xl">
-              <a href={tool.websiteUrl || '#'} target="_blank" rel="noreferrer" className="flex-1" onClick={handleVisitWebsite}>
-                <Button variant="primary" className="w-full h-[52px]">
-                  Visit Website
-                </Button>
-              </a>
-              <div className="flex-1">
-                <Button variant="secondary" className="w-full h-[52px]" onClick={handleLikeToggle}>
-                  {likeLoading
-                    ? 'Saving...'
-                    : isLiked
-                      ? 'Saved in Collection'
-                      : user
-                        ? 'Add to Collection'
-                        : 'Log In to Like'}
-                </Button>
-              </div>
-            </div>
-
-            {isLiked ? (
-              <div className="mt-4 max-w-xl text-center sm:text-right pr-2">
-                <Link href="/liked-tools" className="text-[13px] font-medium text-slate-500 transition hover:text-slate-900 hover:underline">
-                  Open My Collection &rarr;
-                </Link>
-              </div>
-            ) : null}
           </GlassCard>
         </motion.div>
 
